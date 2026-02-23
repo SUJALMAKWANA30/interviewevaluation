@@ -82,359 +82,148 @@ const HRDashboard = () => {
   const [newDataCount, setNewDataCount] = useState(0);
   const previousCountRef = useRef(0);
 
-  // 🔥 FETCH DATA FROM FINAL API (use provided details endpoint, request many)
+  // 🔥 FETCH DATA FROM BACKEND API
   const fetchCandidates = useCallback(async (isManualRefresh = false) => {
     try {
       if (isManualRefresh) {
         setIsRefreshing(true);
       }
 
-      // Base URL without /api suffix - external API doesn't use /api prefix
       const configured =
-        import.meta.env.NEXT_PUBLIC_API_BASE_URL ||
-        import.meta.env.VITE_API_URL ||
-        "http://localhost:5000";
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const apiBase = configured.replace(/\/+$/g, "");
+      const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
 
-      const base = configured.replace(/\/+$/g, "").replace(/\/api$/, "");
-
-      // Also fetch from local candidate-details API
-      const localApiBase = configured.endsWith("/api")
-        ? configured
-        : `${configured}/api`;
-
-      // Fetch local registered candidates
-      let localCandidates = [];
+      // Fetch candidates from our backend
+      let candidatesList = [];
       try {
-        const localRes = await fetch(`${localApiBase}/candidate-details`);
-        if (localRes.ok) {
-          const localJson = await localRes.json();
-          localCandidates = localJson.data || [];
+        const res = await fetch(`${base}/candidate-details`);
+        if (res.ok) {
+          const json = await res.json();
+          candidatesList = json.data || [];
         }
-      } catch (localErr) {
-        console.warn("Failed to fetch local candidates:", localErr);
+      } catch (err) {
+        // silently continue
       }
 
-      const candidatesUrls = [
-        // Primary endpoints (external API structure)
-        `${base}/details`,
-        `${base}/time-details/all`,
-      ];
-
-      let res = null;
-      let lastError = null;
-      for (const url of candidatesUrls) {
-        try {
-          const r = await fetch(url);
-          if (r.ok) {
-            res = r;
-            break;
-          }
-          lastError = new Error(`Status ${r.status} from ${url}`);
-        } catch (err) {
-          lastError = err;
-        }
-      }
-
-      // If external API fails, use local candidates only
-      let list = [];
-      if (res) {
-        const json = await res.json();
-        list = json.data || json;
-      }
-
-      // Merge local candidates into the list
-      localCandidates.forEach((localCandidate) => {
-        const exists = list.some(
-          (item) =>
-            (item.email || item["Email Address"] || "").toLowerCase() ===
-            localCandidate.email?.toLowerCase(),
-        );
-        if (!exists) {
-          // Transform local candidate to match expected format
-          list.push({
-            _id: localCandidate._id,
-            uniqueId: localCandidate.uniqueId,
-            "Full Name": `${localCandidate.firstName} ${localCandidate.lastName}`,
-            "Email Address": localCandidate.email,
-            "Phone number": localCandidate.phone,
-            "Preferred Location": localCandidate.preferredLocation,
-            "Are you wiling to relocate?": localCandidate.willingToRelocate,
-            "Notice Period": localCandidate.noticePeriod,
-            Skills: Array.isArray(localCandidate.skills)
-              ? localCandidate.skills.join(", ")
-              : localCandidate.skills,
-            "Current Designation": localCandidate.currentDesignation,
-            "Current CTC": localCandidate.currentCTC,
-            "Total Experience (Years)": localCandidate.totalExperience,
-            "Experience [GenAI]": localCandidate.experienceLevels?.genai || "",
-            "Experience [Python]":
-              localCandidate.experienceLevels?.python || "",
-            "Experience [RPA]": localCandidate.experienceLevels?.rpa || "",
-            Resume: localCandidate.documents?.resume || "",
-            Photo: localCandidate.documents?.photo || "",
-            "Aadhar Card": localCandidate.documents?.idProof || "",
-            Payslip: localCandidate.documents?.payslips || "",
-            "Last Breakup": localCandidate.documents?.lastBreakup || "",
-            examStatus: localCandidate.examStatus || "not_started",
-            score: localCandidate.examScore,
-            createdAt: localCandidate.createdAt,
-            isLocalRegistration: true,
-          });
-        }
-      });
-
-      // Fetch round 1 quiz segregation data
-      const quizUrls = [`${base}/quiz-segregate`];
-
-      let quizRes = null;
-      let quizLastErr = null;
-      for (const url of quizUrls) {
-        try {
-          const r = await fetch(url);
-          if (r.ok) {
-            quizRes = r;
-            break;
-          }
-          quizLastErr = new Error(`Status ${r.status} from ${url}`);
-        } catch (err) {
-          quizLastErr = err;
-        }
-      }
-
+      // Fetch quiz results from our backend
       let quizList = [];
-      if (quizRes) {
-        try {
-          const quizJson = await quizRes.json();
-          quizList = quizJson.data || quizJson || [];
-        } catch (e) {
-          quizList = [];
+      try {
+        const res = await fetch(`${base}/quizresult`);
+        if (res.ok) {
+          const json = await res.json();
+          quizList = json.data || [];
         }
+      } catch (err) {
+        // silently continue
       }
 
-      const quizMap = new Map();
-      const quizMapByContact = new Map();
-      const quizMapByName = new Map();
-      quizList.forEach((q) => {
-        const emailKey = (q.Email || q.email || q.Username || q.username || "")
-          .toString()
-          .toLowerCase();
-        const contactKey = (q.Contact || q.contact || q.Phone || q.phone || "")
-          .toString()
-          .replace(/\D/g, "");
-        const nameKey = (q.Name || q.name || "")
-          .toString()
-          .toLowerCase()
-          .trim();
-        if (emailKey) {
-          quizMap.set(emailKey, q);
-        }
-        if (contactKey) {
-          quizMapByContact.set(contactKey, q);
-        }
-        if (nameKey) {
-          quizMapByName.set(nameKey, q);
-        }
-      });
-
-      // Try to fetch credentials and merge by email
-      const credUrls = [`${base}/user-details/credentials`];
-
-      let credRes = null;
-      let credLastErr = null;
-      for (const url of credUrls) {
-        try {
-          const r = await fetch(url);
-          if (r.ok) {
-            credRes = r;
-            break;
-          }
-          credLastErr = new Error(`Status ${r.status} from ${url}`);
-        } catch (err) {
-          credLastErr = err;
-        }
-      }
-
-      let credsList = [];
-      if (credRes) {
-        try {
-          const credJson = await credRes.json();
-          credsList = credJson.data || credJson || [];
-        } catch (e) {
-          // ignore parse error and continue without creds
-          credsList = [];
-        }
-      }
-
-      const credMap = new Map();
-      credsList.forEach((c) => {
-        const key = (
-          c.Username ||
-          c.username ||
-          c.Email ||
-          c.email ||
-          c.username
-        )
-          ?.toString()
-          .toLowerCase();
-        if (key) credMap.set(key, c);
-      });
-
-      // Fetch time-details data (startTime, CompletionTime, TimeTaken)
+      // Fetch user time details from our backend
       let timeDetailsList = [];
       try {
-        const timeRes = await fetch(
-          `${base}/time-details/all`,
-        );
-        if (timeRes.ok) {
-          const timeJson = await timeRes.json();
-          timeDetailsList = timeJson.data || timeJson || [];
+        const res = await fetch(`${base}/user-time-details`);
+        if (res.ok) {
+          const json = await res.json();
+          timeDetailsList = json.data || [];
         }
-      } catch (e) {
-        console.warn("Failed to fetch time-details:", e);
+      } catch (err) {
+        // silently continue
       }
+
+      // Build lookup maps
+      const quizMap = new Map();
+      quizList.forEach((q) => {
+        const key = (q.email || "").toLowerCase();
+        if (key) quizMap.set(key, q);
+      });
 
       const timeMap = new Map();
       timeDetailsList.forEach((t) => {
-        const key = (t.Username || t.username || t.uniqueId || t.email || "")
-          .toString()
-          .toLowerCase();
+        const key = (t.email || "").toLowerCase();
         if (key) timeMap.set(key, t);
       });
 
-      // Create formatted list and deduplicate by email
+      // Build formatted candidate list
       const seenEmails = new Set();
       const formatted = [];
 
-      list.forEach((item) => {
-        const itemEmail = (
-          item.email ||
-          item["Email Address"] ||
-          item["Email address"] ||
-          item.Email ||
-          item.Username ||
-          ""
-        )
-          .toString()
-          .toLowerCase();
+      candidatesList.forEach((item) => {
+        const email = (item.email || "").toLowerCase();
+        if (seenEmails.has(email)) return;
+        seenEmails.add(email);
 
-        // Skip duplicates based on email
-        if (seenEmails.has(itemEmail)) {
-          return;
+        const quiz = quizMap.get(email) || {};
+        const timeData = timeMap.get(email) || {};
+
+        const uid = item.uniqueId || item._id || email;
+
+        // Compute completion time in a readable format
+        let completionTimeDisplay = "—";
+        if (timeData.completionTime) {
+          const secs = timeData.completionTime;
+          const m = Math.floor(secs / 60);
+          const s = secs % 60;
+          completionTimeDisplay = `${m}m ${s}s`;
         }
-        seenEmails.add(itemEmail);
 
-        const cred = credMap.get(itemEmail) || {};
-
-        // Try to find quiz data by email first, then by phone/contact, then by name
-        const itemPhone = (item["Phone number"] || item.phone || "")
-          .toString()
-          .replace(/\D/g, "");
-        const itemName = (item["Full Name"] || item.name || "")
-          .toString()
-          .toLowerCase()
-          .trim();
-        let quiz = quizMap.get(itemEmail) || {};
-        if (!quiz._id && itemPhone) {
-          quiz = quizMapByContact.get(itemPhone) || quiz;
-        }
-        if (!quiz._id && itemName) {
-          quiz = quizMapByName.get(itemName) || quiz;
-        }
-        const timeData = timeMap.get(itemEmail) || {};
-
-        const password = (
-          cred.Password ||
-          cred.password ||
-          cred.pwd ||
-          cred.pass ||
-          cred?.userPassword ||
-          ""
-        ).toString();
-        const username = (
-          cred.Username ||
-          cred.username ||
-          cred.userName ||
-          cred.name ||
-          ""
-        ).toString();
-
-        // Use email as unique identifier since we've deduplicated
-        const uid =
-          item.uniqueId ||
-          item._id ||
-          itemEmail ||
-          Math.random().toString(36).slice(2, 9);
+        // Format start/end time
+        const formatTime = (dateStr) => {
+          if (!dateStr) return "—";
+          try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return "—";
+            return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          } catch {
+            return "—";
+          }
+        };
 
         formatted.push({
-          uid, // internal stable id used for keys and selection
-          password: password || "",
-          username: username || itemEmail || "—",
-          name: (
-            item["Full Name"] ||
-            `${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-            item.name ||
-            "—"
-          ).toString(),
-          email:
-            (
-              item.email ||
-              item["Email Address"] ||
-              item["Email address"] ||
-              item.Email ||
-              ""
-            ).toString() || "—",
-          examStatus: item.examStatus || item.status || "not-started",
-          score: item.score ?? null,
-          time: item.timeTaken ?? item.time ?? "—",
-          location:
-            item.location?.city || item.location || item["Location"] || "—",
-          preferredLocation:
-            item["Preferred Location"] || item.preferredLocation || "—",
-          phone: item["Phone number"] || item.phone || "—",
-          photo: item["Photo"] || item.photo || "",
-          resume: item["Resume"] || item.resume || "",
-          aadharCard: item["Aadhar Card"] || item.aadharCard || "",
-          payslip: item["Payslip"] || item.payslip || "",
-          lastBreakup: item["Last Breakup"] || item.lastBreakup || "",
-          skills: item["Skills"] || item.skills || "—",
-          currentCTC: item["Current CTC"] || item.currentCTC || "—",
-          totalExperience:
-            item["Total Experience (Years)"] || item.totalExperience || "—",
-          relevantExperience:
-            item["Relevant Experience (Years)"] ||
-            item.relevantExperience ||
-            "—",
-          experienceGenAI:
-            item["Experience [GenAI]"] || item.experienceGenAI || "—",
-          experiencePython:
-            item["Experience [Python]"] || item.experiencePython || "—",
-          experienceRPA: item["Experience [RPA]"] || item.experienceRPA || "—",
-          noticePeriod: item["Notice Period"] || item.noticePeriod || "—",
-          willingToRelocate:
-            item["Are you wiling to relocate?"] ||
-            item.willingToRelocate ||
-            "—",
-          designation:
-            item["Current Designation"] ||
-            item["Designation"] ||
-            item.designation ||
-            "—",
-          completionTime:
-            timeData.CompletionTime ||
-            item["Completion Time"] ||
-            item.completionTime ||
-            "—",
-          startTime:
-            timeData.startTime || item["Start Time"] || item.startTime || "—",
-          timeTakenInTest:
-            timeData.TimeTaken ||
-            item["Time taken in Test"] ||
-            item.timeTakenInTest ||
-            "—",
-          quiz,
+          uid,
+          password: "",
+          username: email || "—",
+          name: `${item.firstName || ""} ${item.lastName || ""}`.trim() || "—",
+          email: item.email || "—",
+          examStatus: item.examStatus || "not_started",
+          score: quiz.totalMarks ?? item.examScore ?? null,
+          time: completionTimeDisplay,
+          location: "—",
+          preferredLocation: item.preferredLocation || "—",
+          phone: item.phone || "—",
+          photo: item.documents?.photo || "",
+          resume: item.documents?.resume || "",
+          aadharCard: item.documents?.idProof || "",
+          payslip: item.documents?.payslips || "",
+          lastBreakup: item.documents?.lastBreakup || "",
+          skills: Array.isArray(item.skills) ? item.skills.join(", ") : item.skills || "—",
+          currentCTC: item.currentCTC || "—",
+          totalExperience: item.totalExperience || "—",
+          relevantExperience: "—",
+          experienceGenAI: item.experienceLevels?.genai || "—",
+          experiencePython: item.experienceLevels?.python || "—",
+          experienceRPA: item.experienceLevels?.rpa || "—",
+          noticePeriod: item.noticePeriod || "—",
+          willingToRelocate: item.willingToRelocate || "—",
+          designation: item.currentDesignation || "—",
+          completionTime: formatTime(timeData.endTime),
+          startTime: formatTime(timeData.startTime),
+          timeTakenInTest: completionTimeDisplay,
+          attendance: item.attendance || false,
+          quiz: {
+            ...quiz,
+            "Final Score": quiz.totalMarks != null ? String(quiz.totalMarks) : "",
+            // Map section-wise marks if available
+            ...(quiz.sectionWiseMarks
+              ? quiz.sectionWiseMarks.reduce((acc, section) => {
+                  acc[section.sectionName] = String(section.marks);
+                  return acc;
+                }, {})
+              : {}),
+          },
           raw: item,
-          credentials: cred,
+          credentials: {},
           timeDetails: timeData,
+          createdAt: item.createdAt,
         });
       });
 
@@ -442,16 +231,13 @@ const HRDashboard = () => {
       const newCount = formatted.length - previousCountRef.current;
       if (previousCountRef.current > 0 && newCount > 0) {
         setNewDataCount(newCount);
-        // Clear the new data notification after 5 seconds
         setTimeout(() => setNewDataCount(0), 5000);
       }
       previousCountRef.current = formatted.length;
 
       setCandidates(formatted);
-      setRoundDataMap(quizMap);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error(err);
       if (!candidates.length) {
         setError(err.message);
       }
@@ -602,10 +388,10 @@ const HRDashboard = () => {
   };
 
   const getAttendanceStatus = (candidate) => {
-    const qrValue = candidate?.credentials?.qr;
-    if (qrValue === true) return "present";
-    if (qrValue === false) return "absent";
-    return candidate.examStatus || "not-started";
+    if (candidate.attendance === true) return "present";
+    if (candidate.examStatus === "completed") return "present";
+    if (candidate.examStatus === "in_progress") return "present";
+    return "absent";
   };
 
   const getInitials = (name) => {

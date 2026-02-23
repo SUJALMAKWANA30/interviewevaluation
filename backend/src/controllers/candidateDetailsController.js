@@ -76,27 +76,21 @@ export const registerCandidate = async (req, res) => {
           }
         }
       } catch (e) {
-        console.warn("Failed to parse documentUrls:", e.message);
-      }
+      // Failed to parse documentUrls
+    }
     }
 
     // Try to upload files to Google Drive, but don't block registration if it fails
     try {
       if (req.files) {
-        console.log("📁 Files received for upload:", Object.keys(req.files).join(", "));
-
         const uploadFile = async (file, folder, linkKey) => {
           try {
-            console.log(`⬆️  Uploading ${linkKey}: ${file.originalname} (${(file.size / 1024).toFixed(1)}KB)`);
             const result = await uploadFileToDrive(file, folder);
             if (result && result.directLink) {
               documentLinks[linkKey] = result.directLink;
-              console.log(`✅ ${linkKey} uploaded: ${result.directLink}`);
-            } else {
-              console.warn(`⚠️  ${linkKey} upload returned no link`);
             }
           } catch (err) {
-            console.error(`❌ ${linkKey} upload failed:`, err.message);
+            // upload failed, continue without this document
           }
         };
 
@@ -119,10 +113,9 @@ export const registerCandidate = async (req, res) => {
         }
 
         await Promise.allSettled(uploadPromises);
-        console.log("📋 Final document links:", JSON.stringify(documentLinks, null, 2));
       }
     } catch (uploadError) {
-      console.warn("File upload process failed, continuing without documents:", uploadError.message);
+      // File upload process failed, continuing without documents
     }
 
     // Parse skills if it's a string
@@ -203,10 +196,9 @@ export const registerCandidate = async (req, res) => {
         });
       }
     } catch (e) {
-      console.warn("Failed to initialize UserTimeDetails:", e.message);
+      // Failed to initialize UserTimeDetails
     }
   } catch (error) {
-    console.error("Registration error:", error);
     res.status(500).json({
       success: false,
       message: "Registration failed. Please try again.",
@@ -287,7 +279,6 @@ export const loginCandidate = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
     res.status(500).json({
       success: false,
       message: "Login failed. Please try again.",
@@ -311,7 +302,6 @@ export const getAllCandidateDetails = async (req, res) => {
       data: candidates,
     });
   } catch (error) {
-    console.error("Error fetching candidates:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch candidates",
@@ -339,7 +329,6 @@ export const getCandidateDetailsById = async (req, res) => {
       data: candidate,
     });
   } catch (error) {
-    console.error("Error fetching candidate:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching candidate",
@@ -409,7 +398,6 @@ export const updateCandidateDetails = async (req, res) => {
       data: candidate,
     });
   } catch (error) {
-    console.error("Error updating candidate:", error);
     res.status(500).json({
       success: false,
       message: "Error updating candidate",

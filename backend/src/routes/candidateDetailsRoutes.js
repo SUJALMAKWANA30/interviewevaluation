@@ -55,7 +55,7 @@ router.post("/login", loginCandidate);
 router.get("/me", getMe);
 
 // CRUD routes
-// router.get("/", getAllCandidateDetails);
+router.get("/", getAllCandidateDetails);
 router.get("/:id", getCandidateDetailsById);
 router.put("/:id", updateCandidateDetails);
 

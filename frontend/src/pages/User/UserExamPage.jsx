@@ -6,7 +6,8 @@ import ExamTimer from '../../components/Admin/ExamTimer';
 import { candidateMeAPI, userTimeDetailsAPI, quizResultAPI } from '../../utils/api';
 
 // Backend API URL for fetching exam form
-const BACKEND_API_URL = import.meta.env.VITE_API_URL || '/api';
+const BACKEND_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_LOCAL = BACKEND_API_URL.endsWith('/api') ? BACKEND_API_URL : `${BACKEND_API_URL}/api`;
 
 // Fallback URL from env (used if backend is unavailable)
 // const FALLBACK_FORM_URL = import.meta.env.VITE_EXAM_FORM_URL || 'https://quiz.everestwebdeals.co/?form=023e8cc48ceb1b1168973f3addce09a8';
@@ -77,7 +78,7 @@ export default function UserExamPage() {
     })();
     (async () => {
       try {
-        const response = await fetch(`${BACKEND_API_URL}/event/location-settings`, {
+        const response = await fetch(`${API_BASE_LOCAL}/location/validate`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('authToken')}`,
           },

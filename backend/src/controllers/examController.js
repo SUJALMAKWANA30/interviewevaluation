@@ -27,7 +27,6 @@ export const createExam = async (req, res) => {
       data: exam,
     });
   } catch (error) {
-    console.error("Error creating exam:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to create exam.",
@@ -46,7 +45,6 @@ export const getAllExams = async (req, res) => {
       data: exams,
     });
   } catch (error) {
-    console.error("Error fetching exams:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch exams.",
@@ -72,7 +70,6 @@ export const getExamById = async (req, res) => {
       data: exam,
     });
   } catch (error) {
-    console.error("Error fetching exam:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch exam.",
@@ -105,7 +102,6 @@ export const updateExam = async (req, res) => {
       data: exam,
     });
   } catch (error) {
-    console.error("Error updating exam:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update exam.",
@@ -131,7 +127,6 @@ export const deleteExam = async (req, res) => {
       message: "Exam deleted successfully.",
     });
   } catch (error) {
-    console.error("Error deleting exam:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to delete exam.",
@@ -172,7 +167,6 @@ export const toggleActiveExam = async (req, res) => {
       data: exam,
     });
   } catch (error) {
-    console.error("Error toggling exam status:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to toggle exam status.",
@@ -199,7 +193,6 @@ export const getActiveExam = async (req, res) => {
       data: exam,
     });
   } catch (error) {
-    console.error("Error fetching active exam:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch active exam.",

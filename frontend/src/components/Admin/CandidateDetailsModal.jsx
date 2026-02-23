@@ -117,8 +117,6 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       setTimeout(() => {
         setInterviewerSaved(prev => ({ ...prev, [roundKey]: false }));
       }, 2000);
-      
-      console.log(`Auto-saved ${roundKey} interviewer: ${interviewerName}, status: ${newStatus}`);
     } catch (error) {
       console.error('Error auto-saving interviewer:', error);
     } finally {
@@ -161,19 +159,13 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched quiz data for', email, ':', data);
         const quizData = data.data?.[0] || data[0] || data;
         
         if (quizData) {
-          console.log('R2 data:', quizData.R2);
-          console.log('R3 data:', quizData.R3);
-          console.log('R4 data:', quizData.R4);
-          
           // Store the quiz email for updates (this is the email that exists in quiz database)
           const quizDbEmail = quizData.Email || quizData.email || '';
           if (quizDbEmail) {
             setQuizEmail(quizDbEmail);
-            console.log('Quiz database email:', quizDbEmail);
           }
           
           // Set marks
@@ -203,7 +195,6 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
             setComments(prev => ({ ...prev, r3: quizData.R3[0].comments || '' }));
             setR3Interviewer(quizData.R3[0].interviewer || '');
             setR3RoundStatus(quizData.R3[0].status || '');
-            console.log('R3 data loaded - Managerial Status:', r3RatingValue, 'Round Status:', quizData.R3[0].status);
           }
           
           // Set R4 data
@@ -384,8 +375,6 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
         'Final Score': String(candidate.quiz?.['Final Score'] || displayTotal || ''),
       };
 
-      console.log('Saving round data payload:', JSON.stringify(payload, null, 2));
-
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
         headers: {
@@ -395,7 +384,6 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       });
       
       const responseData = await response.json().catch(() => null);
-      console.log('Save response:', response.status, responseData);
 
       if (!response.ok) throw new Error('Failed to save round data');
 
