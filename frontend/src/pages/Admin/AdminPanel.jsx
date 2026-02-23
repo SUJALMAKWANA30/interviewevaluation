@@ -1,0 +1,238 @@
+import { Users, Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
+import AddUserModal from "../../components/Admin/AddUserModal";
+
+const initialUsers = [
+  {
+    id: 1,
+    name: "Arun Kapoor",
+    email: "arun@company.com",
+    role: "HR Manager",
+    active: true,
+  },
+  {
+    id: 2,
+    name: "Meera Joshi",
+    email: "meera@company.com",
+    role: "Recruiter",
+    active: true,
+  },
+  {
+    id: 3,
+    name: "Sanjay Gupta",
+    email: "sanjay@company.com",
+    role: "HR Executive",
+    active: false,
+  },
+  {
+    id: 4,
+    name: "Neha Reddy",
+    email: "neha@company.com",
+    role: "Senior Recruiter",
+    active: true,
+  },
+];
+
+const initialPermissions = [
+  {
+    action: "View Candidates",
+    manager: true,
+    recruiter: true,
+    executive: true,
+  },
+  {
+    action: "Edit Candidates",
+    manager: true,
+    recruiter: true,
+    executive: false,
+  },
+  { action: "Export Data", manager: true, recruiter: false, executive: false },
+  {
+    action: "Delete Records",
+    manager: true,
+    recruiter: false,
+    executive: false,
+  },
+  { action: "Manage Exams", manager: true, recruiter: true, executive: false },
+  { action: "View Reports", manager: true, recruiter: true, executive: true },
+  {
+    action: "Admin Settings",
+    manager: true,
+    recruiter: false,
+    executive: false,
+  },
+];
+
+export default function AdminPanel() {
+  const [users, setUsers] = useState(initialUsers);
+  const [permissions, setPermissions] = useState(initialPermissions);
+
+  const togglePermission = (index, role) => {
+    const updated = [...permissions];
+    updated[index][role] = !updated[index][role];
+    setPermissions(updated);
+  };
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleSaveUser = (userData) => {
+    const user = {
+      id: users.length + 1,
+      ...userData,
+    };
+
+    setUsers([...users, user]);
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 px-6">
+      {/* ===== TITLE ===== */}
+      <div className="mb-8">
+        <h1 className="text-2xl text-left font-bold text-gray-800">
+          Super Admin Panel
+        </h1>
+        <p className="text-gray-500 text-left text-sm">
+          Manage HR users, roles, and permissions.
+        </p>
+      </div>
+
+      {/* ===== HR USERS CARD ===== */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-10">
+        <div className="flex justify-between items-center px-6 py-4">
+          <h2 className="font-semibold text-gray-700">HR Users</h2>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm cursor-pointer"
+          >
+            <Users size={16} /> Add User
+          </button>
+        </div>
+
+        <div className="px-4 pb-6">
+          <div className="rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-100 text-gray-500">
+                <tr>
+                  <th className="px-6 py-3">Name</th>
+                  <th className="px-6 py-3">Email</th>
+                  <th className="px-6 py-3">Role</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 font-medium text-gray-800">
+                      {user.name}
+                    </td>
+
+                    <td className="px-6 py-4 text-gray-500">{user.email}</td>
+
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 text-xs bg-gray-100 rounded-full text-gray-700">
+                        {user.role}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 text-xs rounded-full ${
+                          user.active
+                            ? "bg-green-100 text-green-600"
+                            : "bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {user.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-4 flex gap-3">
+                      <Edit
+                        size={16}
+                        className="text-gray-600 cursor-pointer hover:text-black"
+                      />
+                      <Trash2
+                        size={16}
+                        className="text-red-500 cursor-pointer hover:text-red-700"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== PERMISSION MATRIX ===== */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4">
+          <h2 className="font-semibold text-left text-gray-700">
+            Permission Matrix
+          </h2>
+        </div>
+
+        <div className="px-6 pb-6">
+          <div className="rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm table-fixed">
+              <thead className="bg-gray-100 text-gray-500">
+                <tr>
+                  <th className="w-2/5 px-8 py-4 text-left font-bold">
+                    Permission
+                  </th>
+                  <th className="w-1/5 px-8 py-4 text-left font-bold">
+                    Manager
+                  </th>
+                  <th className="w-1/5 px-8 py-4 text-left font-bold">
+                    Recruiter
+                  </th>
+                  <th className="w-1/5 px-8 py-4 text-left font-bold">
+                    Executive
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {permissions.map((perm, index) => (
+                  <tr key={perm.action}>
+                    <td className="px-8 py-5 font-medium text-gray-800 text-left">
+                      {perm.action}
+                    </td>
+
+                    {["manager", "recruiter", "executive"].map((role) => (
+                      <td key={role} className="px-8 py-5 align-middle">
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => togglePermission(index, role)}
+                            className={`relative w-12 h-6 rounded-full transition-colors duration-300 ease-in-out cursor-pointer ${
+                              perm[role] ? "bg-blue-600" : "bg-gray-300"
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-300 ease-in-out ${
+                                perm[role] ? "translate-x-6" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <AddUserModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveUser}
+      />
+    </div>
+  );
+}

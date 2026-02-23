@@ -16,6 +16,9 @@ import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
 import HRLayout from "./layout/HRLayout";
 
+// Admin
+import AdminPanel from "./pages/Admin/AdminPanel";
+
 // Utility Components
 import LocationGate from "./components/Admin/LocationGate";
 
@@ -116,6 +119,15 @@ function App() {
             </HRLayout>
           }
         />
+        <Route
+          path="/admin-settings"
+          element={
+            <HRLayout>
+              <AdminPanel />
+            </HRLayout>
+          }
+        />
+        
 
         {/* Catch all - redirect to login */}
         <Route path="*" element={<Navigate to="/user-login" replace />} />

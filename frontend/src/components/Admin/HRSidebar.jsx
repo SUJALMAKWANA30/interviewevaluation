@@ -13,7 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 
-import { cn } from "../../utils/cn"; // adjust path if needed
+import { cn } from "../../utils/cn";
 
 const navItems = [
   { label: "Dashboard", href: "/hr-home", icon: LayoutDashboard },
@@ -21,7 +21,7 @@ const navItems = [
   { label: "Exams", href: "/hr/exam", icon: FileText },
   { label: "Rounds", href: "/hr/rounds", icon: GitBranch },
   { label: "Reports", href: "/hr/reports", icon: BarChart3 },
-  { label: "Settings", href: "/hr/settings", icon: Settings },
+  { label: "Admin Settings", href: "/admin-settings", icon: Settings },
 ];
 
 export default function HrSidebar() {
@@ -32,76 +32,87 @@ export default function HrSidebar() {
   return (
     <aside
       className={cn(
-        "hidden h-full shrink-0 flex-col border-r border-white/10 bg-[#0f1e3d] text-white transition-all duration-200 lg:flex",
-        collapsed ? "w-17" : "w-64",
+        "hidden lg:flex flex-col h-screen shrink-0 bg-[#0f1e3d] text-white border-r border-white/10 transition-all duration-300",
+        collapsed ? "w-20" : "w-64"
       )}
     >
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
-          <Zap className="h-4 w-4 text-white" />
+      {/* Logo Section */}
+      <div className="flex items-center h-16 px-6 border-b border-white/10">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 shrink-0">
+          <Zap className="w-4 h-4 text-white" />
         </div>
+
         {!collapsed && (
-          <span className="text-lg font-semibold tracking-wide text-white">
+          <span className="ml-3 text-lg font-semibold tracking-wide">
             Tecnoprism
           </span>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex flex-1 flex-col gap-1 p-3 mt-3">
+      {/* Navigation */}
+      <nav className="flex flex-col flex-1 px-4 py-6 space-y-1">
         {navItems.map((item) => {
           const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+            pathname === item.href ||
+            pathname.startsWith(item.href + "/");
 
           return (
             <Link
               key={item.href}
               to={item.href}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150",
+                "flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                collapsed ? "justify-center" : "justify-start",
                 isActive
                   ? "bg-white/10 text-white shadow-md"
-                  : "text-white/70 hover:bg-white/10 hover:text-white",
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
               )}
-              title={collapsed ? item.label : undefined}
             >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && item.label}
+              <item.icon className="w-5 h-5 shrink-0" />
+              {!collapsed && (
+                <span className="ml-3">{item.label}</span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Collapse */}
-      <div className="border-t border-white/10 p-4">
+      {/* Bottom Section */}
+      <div className="px-4 py-4 border-t border-white/10 space-y-2">
+        {/* Collapse */}
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/10 hover:text-white"
+          className={cn(
+            "flex items-center w-full rounded-lg px-4 py-3 text-sm transition-all duration-200",
+            collapsed ? "justify-center" : "justify-start",
+            "text-white/70 hover:bg-white/10 hover:text-white"
+          )}
         >
           {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="w-4 h-4" />
           ) : (
             <>
-              <ChevronLeft className="h-4 w-4" />
-              <span>Collapse</span>
+              <ChevronLeft className="w-4 h-4" />
+              <span className="ml-3">Collapse</span>
             </>
           )}
         </button>
 
+        {/* Logout */}
         <Link to="/hr-login">
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-3 rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/10 hover:text-white"
+            className={cn(
+              "flex items-center w-full rounded-lg px-4 py-3 text-sm transition-all duration-200",
+              collapsed ? "justify-center" : "justify-start",
+              "text-white/70 hover:bg-white/10 hover:text-white"
+            )}
           >
-            {collapsed ? (
-              <LogOut className="h-4 w-4" />
-            ) : (
-              <>
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </>
+            <LogOut className="w-4 h-4" />
+            {!collapsed && (
+              <span className="ml-3">Logout</span>
             )}
           </button>
         </Link>
