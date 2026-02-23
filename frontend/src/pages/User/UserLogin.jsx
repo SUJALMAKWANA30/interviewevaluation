@@ -41,10 +41,10 @@ export default function UserLogin() {
         throw new Error(data.message || 'Login failed');
       }
 
-      // Store only auth token
+      // Store auth token and user type
       localStorage.setItem('authToken', data.token);
+      localStorage.setItem('userType', 'user');
       // Cleanup other localStorage keys if present
-      localStorage.removeItem('userType');
       localStorage.removeItem('userData');
       localStorage.removeItem('examStartTime');
       localStorage.removeItem('examDuration');

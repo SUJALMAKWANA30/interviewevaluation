@@ -60,15 +60,15 @@ function App() {
             =========================================== */}
         {/* Public Routes - Protected by Location */}
         <Route path="/" element={<RedirectWithParams to="/user-login" />} />
-        <Route
+        {/* <Route
           path="/user-login"
           element={
             <LocationGate>
               <UserLogin />
             </LocationGate>
           }
-        />
-        {/* <Route path="/user-login" element={<UserLogin />} /> */}
+        /> */}
+        <Route path="/user-login" element={<UserLogin />} />
         <Route path="/user-register" element={<UserRegistration />} />
         {/* Protected User Routes */}
         <Route
