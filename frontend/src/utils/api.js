@@ -169,6 +169,85 @@ export const userAPI = {
 
 export const examAPI = {
   /**
+   * Create a new exam
+   */
+  createExam: async (examData) => {
+    const response = await fetch(`${API_BASE}/exams`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(examData),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get all exams
+   */
+  getAllExams: async () => {
+    const response = await fetch(`${API_BASE}/exams`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get exam by ID
+   */
+  getExamById: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Update exam
+   */
+  updateExam: async (id, examData) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(examData),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Delete exam
+   */
+  deleteExam: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Toggle active status
+   */
+  toggleActive: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}/toggle-active`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get active exam (for user side)
+   */
+  getActiveExam: async () => {
+    const response = await fetch(`${API_BASE}/exams/active`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Start exam
    */
   startExam: async () => {

@@ -103,7 +103,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
         'Final Score': String(candidate.quiz?.['Final Score'] || ''),
       };
 
-      const response = await fetch('https://tecnoprismmainbackend.onrender.com/quiz-segregate/update', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
   // Fetch interviewer names from API
   const fetchInterviewerNames = async () => {
     try {
-      const response = await fetch('https://tecnoprismmainbackend.onrender.com/interviewer');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/interviewer`);
       if (response.ok) {
         const data = await response.json();
         // Extract names from the first group in data array
@@ -158,7 +158,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       if (cleanPhone) params.append('contact', cleanPhone);
       params.append('email', email.toLowerCase());
       
-      const response = await fetch(`https://tecnoprismmainbackend.onrender.com/quiz-segregate?${params.toString()}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         console.log('Fetched quiz data for', email, ':', data);
@@ -301,7 +301,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
         "Final Score": String(calculatedTotal)
       };
 
-      const response = await fetch('https://tecnoprismmainbackend.onrender.com/quiz-segregate/update', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -386,7 +386,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
 
       console.log('Saving round data payload:', JSON.stringify(payload, null, 2));
 
-      const response = await fetch('https://tecnoprismmainbackend.onrender.com/quiz-segregate/update', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

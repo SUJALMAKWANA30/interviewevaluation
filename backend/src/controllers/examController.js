@@ -1,0 +1,209 @@
+import Exam from "../models/Exam.js";
+
+// Create a new exam
+export const createExam = async (req, res) => {
+  try {
+    const { title, duration, sections } = req.body;
+
+    if (!title || !duration || !sections || !sections.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, duration, and at least one section are required.",
+      });
+    }
+
+    const exam = new Exam({
+      title,
+      duration,
+      sections,
+      status: "Draft",
+    });
+
+    await exam.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Exam created successfully.",
+      data: exam,
+    });
+  } catch (error) {
+    console.error("Error creating exam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create exam.",
+      error: error.message,
+    });
+  }
+};
+
+// Get all exams
+export const getAllExams = async (req, res) => {
+  try {
+    const exams = await Exam.find().sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: exams,
+    });
+  } catch (error) {
+    console.error("Error fetching exams:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch exams.",
+      error: error.message,
+    });
+  }
+};
+
+// Get a single exam by ID
+export const getExamById = async (req, res) => {
+  try {
+    const exam = await Exam.findById(req.params.id);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: exam,
+    });
+  } catch (error) {
+    console.error("Error fetching exam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch exam.",
+      error: error.message,
+    });
+  }
+};
+
+// Update an exam
+export const updateExam = async (req, res) => {
+  try {
+    const { title, duration, sections, status } = req.body;
+
+    const exam = await Exam.findByIdAndUpdate(
+      req.params.id,
+      { title, duration, sections, status },
+      { new: true, runValidators: true }
+    );
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Exam updated successfully.",
+      data: exam,
+    });
+  } catch (error) {
+    console.error("Error updating exam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update exam.",
+      error: error.message,
+    });
+  }
+};
+
+// Delete an exam
+export const deleteExam = async (req, res) => {
+  try {
+    const exam = await Exam.findByIdAndDelete(req.params.id);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Exam deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting exam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete exam.",
+      error: error.message,
+    });
+  }
+};
+
+// Toggle active status of an exam (only one can be active)
+export const toggleActiveExam = async (req, res) => {
+  try {
+    const exam = await Exam.findById(req.params.id);
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam not found.",
+      });
+    }
+
+    if (exam.isActive) {
+      // Deactivate it
+      exam.isActive = false;
+      await exam.save();
+    } else {
+      // Deactivate all others, activate this one
+      await Exam.updateMany({ isActive: true }, { isActive: false });
+      exam.isActive = true;
+      exam.status = "Published";
+      await exam.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: exam.isActive
+        ? "Exam activated successfully."
+        : "Exam deactivated successfully.",
+      data: exam,
+    });
+  } catch (error) {
+    console.error("Error toggling exam status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to toggle exam status.",
+      error: error.message,
+    });
+  }
+};
+
+// Get the currently active exam (for user-side)
+export const getActiveExam = async (req, res) => {
+  try {
+    const exam = await Exam.findOne({ isActive: true });
+
+    if (!exam) {
+      return res.status(404).json({
+        success: false,
+        message: "No active exam found.",
+      });
+    }
+
+    // Return full exam data including correctAnswer for client-side scoring
+    return res.status(200).json({
+      success: true,
+      data: exam,
+    });
+  } catch (error) {
+    console.error("Error fetching active exam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active exam.",
+      error: error.message,
+    });
+  }
+};

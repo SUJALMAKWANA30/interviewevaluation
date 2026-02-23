@@ -93,7 +93,7 @@ const HRDashboard = () => {
       const configured =
         import.meta.env.NEXT_PUBLIC_API_BASE_URL ||
         import.meta.env.VITE_API_URL ||
-        "https://tecnoprismmainbackend.onrender.com";
+        "http://localhost:5000";
 
       const base = configured.replace(/\/+$/g, "").replace(/\/api$/, "");
 
@@ -283,7 +283,7 @@ const HRDashboard = () => {
       let timeDetailsList = [];
       try {
         const timeRes = await fetch(
-          "https://tecnoprismmainbackend.onrender.com/time-details/all",
+          `${base}/time-details/all`,
         );
         if (timeRes.ok) {
           const timeJson = await timeRes.json();
@@ -663,7 +663,7 @@ const HRDashboard = () => {
       if (contactToFetch) params.append("contact", contactToFetch);
       params.append("email", emailToFetch);
 
-      const url = `https://tecnoprismmainbackend.onrender.com/quiz-segregate?${params.toString()}`;
+      const url = `${(import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '')}/quiz-segregate?${params.toString()}`;
 
       const response = await fetch(url);
 
@@ -858,7 +858,7 @@ const HRDashboard = () => {
       };
 
       const response = await fetch(
-        "https://tecnoprismmainbackend.onrender.com/quiz-segregate/update",
+        `${(import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '')}/quiz-segregate/update`,
         {
           method: "POST",
           headers: {

@@ -122,6 +122,14 @@ function App() {
             </HRLayout>
           }
         />
+        <Route
+          path="/hr/exams/:id/builder"
+          element={
+            <HRLayout>
+              <ExamBuilder />
+            </HRLayout>
+          }
+        />
 
         {/* Catch all - redirect to login */}
         <Route path="*" element={<Navigate to="/user-login" replace />} />
