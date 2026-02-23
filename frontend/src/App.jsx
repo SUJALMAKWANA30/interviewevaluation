@@ -4,9 +4,10 @@ import { Toaster } from "react-hot-toast";
 import "./App.css";
 
 // User Pages
-import UserLogin from "./pages/User/UserLogin";
-import UserRegistration from "./pages/User/UserRegistration";
-import UserExamPage from "./pages/User/UserExamPage";
+import UserLogin from './pages/User/UserLogin';
+import UserRegistration from './pages/User/UserRegistration';
+import UserExamPage from './pages/User/UserExamPage';
+import QuizForm from './pages/User/QuizForm';
 
 // HR Pages
 import HRLogin from "./pages/Admin/HRLogin";
@@ -78,10 +79,15 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* =========================================== 
-            Admin Routes - Protected by Auth and User Type, with Location Gate on Login 
-            =========================================== */}
+        <Route
+          path="/quiz"
+          element={
+            <ProtectedRoute requiredUserType="user">
+              <QuizForm />
+            </ProtectedRoute>
+          }
+        />
+ 
         {/* Protected HR Routes */}
         <Route path="/hr-login" element={<HRLogin />} />
         <Route
