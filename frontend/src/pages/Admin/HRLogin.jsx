@@ -18,7 +18,7 @@ export default function HRLogin() {
     try {
       // Fetch roles from API
       const response = await fetch(
-        "https://tecnoprismmainbackend.onrender.com/roles?includePassword=true",
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/roles?includePassword=true`,
       );
 
       if (!response.ok) {

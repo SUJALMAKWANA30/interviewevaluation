@@ -95,9 +95,6 @@ export default function LocationGate({ children }) {
 
     // TPAccess bypass - skip location check entirely
     if (locationData.bypassLocation) {
-      console.log(
-        "🔓 Emergency bypass token detected - skipping location check",
-      );
       setStatus("granted");
       return;
     }

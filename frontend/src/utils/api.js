@@ -46,7 +46,7 @@ export const authAPI = {
    * Register a new user with location
    */
   registerUser: async (userData) => {
-    const response = await fetch(`${API_BASE_URL}/auth/register-user`, {
+    const response = await fetch(`${API_BASE}/candidate-details/register`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(userData),
@@ -58,7 +58,7 @@ export const authAPI = {
    * Login user
    */
   loginUser: async (email, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login-user`, {
+    const response = await fetch(`${API_BASE}/candidate-details/login`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, password }),
@@ -70,7 +70,7 @@ export const authAPI = {
    * Register HR
    */
   registerHR: async (hrData) => {
-    const response = await fetch(`${API_BASE_URL}/auth/register-hr`, {
+    const response = await fetch(`${API_BASE}/candidate-details/register`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(hrData),
@@ -98,7 +98,7 @@ export const authAPI = {
       };
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/login-hr`, {
+    const response = await fetch(`${API_BASE}/candidate-details/login`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, password }),
@@ -110,7 +110,7 @@ export const authAPI = {
    * Verify email
    */
   verifyEmail: async (token) => {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-email/${token}`, {
+    const response = await fetch(`${API_BASE}/candidate-details/${token}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -133,7 +133,7 @@ export const userAPI = {
    * Get user profile
    */
   getProfile: async () => {
-    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+    const response = await fetch(`${API_BASE}/candidate-details/me`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -144,7 +144,7 @@ export const userAPI = {
    * Update user profile
    */
   updateProfile: async (userData) => {
-    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+    const response = await fetch(`${API_BASE}/candidate-details/me`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(userData),
@@ -156,7 +156,7 @@ export const userAPI = {
    * Register user with location validation
    */
   registerWithLocation: async (userData) => {
-    const response = await fetch(`${API_BASE_URL}/users/register-location`, {
+    const response = await fetch(`${API_BASE}/candidate-details/register`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(userData),
@@ -169,10 +169,89 @@ export const userAPI = {
 
 export const examAPI = {
   /**
+   * Create a new exam
+   */
+  createExam: async (examData) => {
+    const response = await fetch(`${API_BASE}/exams`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(examData),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get all exams
+   */
+  getAllExams: async () => {
+    const response = await fetch(`${API_BASE}/exams`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get exam by ID
+   */
+  getExamById: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Update exam
+   */
+  updateExam: async (id, examData) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(examData),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Delete exam
+   */
+  deleteExam: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Toggle active status
+   */
+  toggleActive: async (id) => {
+    const response = await fetch(`${API_BASE}/exams/${id}/toggle-active`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get active exam (for user side)
+   */
+  getActiveExam: async () => {
+    const response = await fetch(`${API_BASE}/exams/active`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Start exam
    */
   startExam: async () => {
-    const response = await fetch(`${API_BASE_URL}/exam/start`, {
+    const response = await fetch(`${API_BASE}/user-time-details/start`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -183,7 +262,7 @@ export const examAPI = {
    * Pause exam
    */
   pauseExam: async () => {
-    const response = await fetch(`${API_BASE_URL}/exam/pause`, {
+    const response = await fetch(`${API_BASE}/user-time-details/end`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -194,7 +273,7 @@ export const examAPI = {
    * Resume exam
    */
   resumeExam: async () => {
-    const response = await fetch(`${API_BASE_URL}/exam/resume`, {
+    const response = await fetch(`${API_BASE}/user-time-details/start`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -205,7 +284,7 @@ export const examAPI = {
    * End exam
    */
   endExam: async () => {
-    const response = await fetch(`${API_BASE_URL}/exam/end`, {
+    const response = await fetch(`${API_BASE}/user-time-details/end`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -216,7 +295,7 @@ export const examAPI = {
    * Get exam status
    */
   getExamStatus: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/exam/status/${userId}`, {
+    const response = await fetch(`${API_BASE}/user-time-details/email/${userId}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -231,7 +310,7 @@ export const eventAPI = {
    * Get event location settings
    */
   getLocationSettings: async () => {
-    const response = await fetch(`${API_BASE_URL}/event/location-settings`, {
+    const response = await fetch(`${API_BASE}/location/validate`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -242,7 +321,7 @@ export const eventAPI = {
    * Verify location within radius
    */
   verifyLocation: async (latitude, longitude) => {
-    const response = await fetch(`${API_BASE_URL}/users/verify-location`, {
+    const response = await fetch(`${API_BASE}/location/validate`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ latitude, longitude }),
@@ -260,7 +339,7 @@ export const hrAPI = {
   getCandidates: async (filters = {}) => {
     const queryString = new URLSearchParams(filters).toString();
     const response = await fetch(
-      `${API_BASE_URL}/hr/candidates${queryString ? '?' + queryString : ''}`,
+      `${API_BASE}/candidate-details${queryString ? '?' + queryString : ''}`,
       {
         method: 'GET',
         headers: getAuthHeaders(),
@@ -273,7 +352,7 @@ export const hrAPI = {
    * Get active candidates (in progress exams)
    */
   getActiveCandidates: async () => {
-    const response = await fetch(`${API_BASE_URL}/hr/candidates/active`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -284,7 +363,7 @@ export const hrAPI = {
    * Get single candidate details
    */
   getCandidate: async (candidateId) => {
-    const response = await fetch(`${API_BASE_URL}/hr/candidate/${candidateId}`, {
+    const response = await fetch(`${API_BASE}/candidate-details/${candidateId}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -296,7 +375,7 @@ export const hrAPI = {
    */
   updateCandidateNotes: async (candidateId, notes) => {
     const response = await fetch(
-      `${API_BASE_URL}/hr/candidate/${candidateId}/notes`,
+      `${API_BASE}/candidate-details/${candidateId}`,
       {
         method: 'PUT',
         headers: getAuthHeaders(),
@@ -311,7 +390,7 @@ export const hrAPI = {
    */
   updateCandidateStatus: async (candidateId, status) => {
     const response = await fetch(
-      `${API_BASE_URL}/hr/candidate/${candidateId}/status`,
+      `${API_BASE}/candidate-details/${candidateId}`,
       {
         method: 'PUT',
         headers: getAuthHeaders(),
@@ -325,7 +404,7 @@ export const hrAPI = {
    * Get analytics/statistics
    */
   getAnalytics: async () => {
-    const response = await fetch(`${API_BASE_URL}/hr/analytics`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -340,7 +419,7 @@ export const emailAPI = {
    * Send unique ID email
    */
   sendUniqueId: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/email/send-unique-id`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ userId }),
@@ -352,7 +431,7 @@ export const emailAPI = {
    * Send verification email
    */
   sendVerification: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/email/send-verification`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ userId }),
@@ -364,7 +443,7 @@ export const emailAPI = {
    * Send exam reminder
    */
   sendReminder: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/email/send-reminder`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ userId }),
@@ -381,7 +460,7 @@ export const candidateDetailsAPI = {
    */
   register: async (formData) => {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`${API_BASE_URL}/candidate-details/register`, {
+    const response = await fetch(`${API_BASE}/candidate-details/register`, {
       method: 'POST',
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -395,7 +474,7 @@ export const candidateDetailsAPI = {
    * Login candidate
    */
   login: async (email, password) => {
-    const response = await fetch(`${API_BASE_URL}/candidate-details/login`, {
+    const response = await fetch(`${API_BASE}/candidate-details/login`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, password }),
@@ -407,7 +486,7 @@ export const candidateDetailsAPI = {
    * Get all candidates
    */
   getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/candidate-details`, {
+    const response = await fetch(`${API_BASE}/candidate-details`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -418,7 +497,7 @@ export const candidateDetailsAPI = {
    * Get candidate by ID
    */
   getById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/candidate-details/${id}`, {
+    const response = await fetch(`${API_BASE}/candidate-details/${id}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -429,7 +508,7 @@ export const candidateDetailsAPI = {
    * Update candidate
    */
   update: async (id, updateData) => {
-    const response = await fetch(`${API_BASE_URL}/candidate-details/${id}`, {
+    const response = await fetch(`${API_BASE}/candidate-details/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(updateData),

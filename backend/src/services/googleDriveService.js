@@ -26,7 +26,6 @@ const initializeDrive = () => {
       process.env.GOOGLE_DRIVE_CLIENT_SECRET &&
       process.env.GOOGLE_DRIVE_REFRESH_TOKEN
     ) {
-      console.log("🔑 Using OAuth2 credentials for Google Drive");
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_DRIVE_CLIENT_ID,
         process.env.GOOGLE_DRIVE_CLIENT_SECRET
@@ -43,14 +42,11 @@ const initializeDrive = () => {
         : path.join(__dirname, "../../config/google-drive-key.json");
 
       if (fs.existsSync(keyfilePath)) {
-        console.log("🔑 Using service account key file for Google Drive:", keyfilePath);
         auth = new google.auth.GoogleAuth({
           keyFile: keyfilePath,
           scopes: SCOPES,
         });
       } else {
-        console.warn("⚠️  Google Drive API not configured.");
-        console.warn("   Run: node scripts/google-auth.js   to set up OAuth2 credentials");
         authError = new Error("Google Drive API not configured");
         authInitialized = true;
         return null;
@@ -59,10 +55,8 @@ const initializeDrive = () => {
 
     drive = google.drive({ version: "v3", auth });
     authInitialized = true;
-    console.log("✅ Google Drive API initialized successfully");
     return drive;
   } catch (error) {
-    console.error("❌ Failed to initialize Google Drive API:", error.message);
     authError = error;
     authInitialized = true;
     return null;
@@ -79,7 +73,6 @@ export const uploadFileToDrive = async (file, folderName = "candidate-documents"
   const driveClient = initializeDrive();
 
   if (!driveClient) {
-    console.warn("Google Drive not available, skipping file upload");
     return null;
   }
 
@@ -128,8 +121,6 @@ export const uploadFileToDrive = async (file, folderName = "candidate-documents"
       fields: "id, webViewLink, webContentLink",
     });
 
-    console.log(`✅ Uploaded ${file.originalname} to Google Drive (${folderName})`);
-
     return {
       fileId: fileData.data.id,
       webViewLink: fileData.data.webViewLink,
@@ -137,7 +128,6 @@ export const uploadFileToDrive = async (file, folderName = "candidate-documents"
       directLink: `https://drive.google.com/open?id=${fileData.data.id}`,
     };
   } catch (error) {
-    console.error("❌ Error uploading file to Google Drive:", error.message);
     return null;
   }
 };
@@ -191,7 +181,6 @@ const getOrCreateFolder = async (driveClient, folderName, parentFolderId = null)
 
     return folder.data.id;
   } catch (error) {
-    console.error("Error creating/finding folder:", error);
     throw new Error(`Failed to create/find folder: ${error.message}`);
   }
 };
@@ -208,7 +197,6 @@ export const deleteFileFromDrive = async (fileId) => {
     await driveClient.files.delete({ fileId });
     return { success: true, message: "File deleted successfully" };
   } catch (error) {
-    console.error("Error deleting file from Google Drive:", error);
     return { success: false, message: error.message };
   }
 };
@@ -228,7 +216,6 @@ export const getFileMetadata = async (fileId) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Error getting file metadata:", error);
     return null;
   }
 };

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./FormQuiz.css";
-import quizData from "../../data/quizData.json";
 import toast from "react-hot-toast";
 import {
   QUIZ_STAGES,
@@ -17,9 +16,7 @@ import {
   getPerformanceMessage,
   getPerformanceColor,
 } from "../../utils/quizUtils";
-import { quizResultAPI, userTimeDetailsAPI, candidateMeAPI, eventAPI } from "../../utils/api";
-
-const quizSections = quizData.quizSections;
+import { quizResultAPI, userTimeDetailsAPI, candidateMeAPI, eventAPI, examAPI } from "../../utils/api";
 
 export default function QuizForm() {
   const [stage, setStage] = useState(QUIZ_STAGES.QUIZ);
@@ -28,12 +25,49 @@ export default function QuizForm() {
   const [sectionScores, setSectionScores] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [resultMessage, setResultMessage] = useState("");
+  const [quizSections, setQuizSections] = useState([]);
+  const [examLoading, setExamLoading] = useState(true);
   const timeoutTriggeredRef = useRef(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [isTimeoutResult, setIsTimeoutResult] = useState(false);
   const autoRedirectTimerRef = useRef(null);
   const navigate = useNavigate();
   const finishQuizRef = useRef(null);
+
+  // Fetch active exam from DB
+  useEffect(() => {
+    const loadExam = async () => {
+      try {
+        const res = await examAPI.getActiveExam();
+        if (res.success && res.data) {
+          const exam = res.data;
+          // Transform DB sections to match the format expected by the quiz
+          const sections = (exam.sections || []).map((section, sIdx) => ({
+            id: section._id || sIdx + 1,
+            title: section.title || `Section ${sIdx + 1}`,
+            icon: "",
+            color: "",
+            description: "",
+            questions: (section.questions || []).map((q) => ({
+              id: q._id,
+              question: q.question,
+              image: null,
+              options: q.options,
+              // Convert index-based correctAnswer to the actual option text
+              correctAnswer: q.options[q.correctAnswer] || q.options[0],
+            })),
+          }));
+          setQuizSections(sections);
+        }
+      } catch (err) {
+        console.error("Failed to load active exam:", err);
+        toast.error("No active exam found. Please contact HR.");
+      } finally {
+        setExamLoading(false);
+      }
+    };
+    loadExam();
+  }, []);
 
   const finishQuiz = useCallback(async () => {
     const scores = {};
@@ -164,6 +198,34 @@ export default function QuizForm() {
     }
     navigate("/user-dashboard");
   };
+
+  if (examLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading exam...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quizSections.length) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center bg-white rounded-xl p-8 shadow-sm border border-gray-200 max-w-md">
+          <p className="text-gray-700 text-lg font-semibold mb-2">No Active Exam</p>
+          <p className="text-gray-500 text-sm mb-4">There is no active exam available at the moment. Please contact HR.</p>
+          <button
+            onClick={() => navigate("/user-dashboard")}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (stage === QUIZ_STAGES.QUIZ) {
     const section = quizSections[currentSection];
