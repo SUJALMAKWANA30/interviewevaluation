@@ -24,6 +24,7 @@ const examSchema = new mongoose.Schema(
       default: "Draft",
     },
     createdBy: { type: String, default: "" },
+    driveId: { type: mongoose.Schema.Types.ObjectId, ref: "Drive", default: null },
   },
   { timestamps: true }
 );

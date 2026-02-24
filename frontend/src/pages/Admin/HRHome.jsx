@@ -22,22 +22,28 @@ import {
   Cell,
 } from "recharts";
 
+import { useDrive } from "../../context/DriveContext";
+
 export default function HrDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { selectedDriveId, selectedDrive } = useDrive();
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       const configured = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const apiBase = configured.replace(/\/+$/g, "");
       const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
 
+      const driveQuery = selectedDriveId && selectedDriveId !== "all" ? `?driveId=${selectedDriveId}` : "";
+
       try {
         const [candRes, quizRes, examRes] = await Promise.allSettled([
-          fetch(`${base}/candidate-details`),
-          fetch(`${base}/quizresult`),
+          fetch(`${base}/candidate-details${driveQuery}`),
+          fetch(`${base}/quizresult${driveQuery}`),
           fetch(`${base}/exams`),
         ]);
 
@@ -60,7 +66,7 @@ export default function HrDashboard() {
       }
     };
     fetchData();
-  }, []);
+  }, [selectedDriveId]);
 
   // Compute stats from real data
   const totalCandidates = candidates.length;
@@ -184,9 +190,18 @@ export default function HrDashboard() {
     <div className="w-full text-left">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Dashboard
+          {selectedDrive && (
+            <span className="ml-2 text-base font-normal text-blue-600">
+              — {selectedDrive.name}
+            </span>
+          )}
+        </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Recruitment overview from real-time data.
+          {selectedDrive
+            ? `Showing data for ${selectedDrive.name} (${selectedDrive.location})`
+            : "Recruitment overview from real-time data (all drives)."}
         </p>
       </div>
 

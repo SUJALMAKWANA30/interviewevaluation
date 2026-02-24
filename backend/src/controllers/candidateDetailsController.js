@@ -38,6 +38,9 @@ export const registerCandidate = async (req, res) => {
 
       // Document URLs (from URL-based upload)
       documentUrls,
+
+      // Walk-in Drive
+      driveId,
     } = req.body;
 
     // Validate required fields
@@ -158,6 +161,7 @@ export const registerCandidate = async (req, res) => {
       documents: documentLinks,
       password,
       termsAccepted: termsAccepted === true || termsAccepted === "true",
+      driveId: driveId || null,
     });
 
     await candidate.save();
@@ -193,6 +197,7 @@ export const registerCandidate = async (req, res) => {
           lastName: candidate.lastName,
           photo: (candidate?.documents?.photo || "").toString(),
           passwordHash: candidate.password,
+          driveId: driveId || null,
         });
       }
     } catch (e) {
@@ -292,7 +297,11 @@ export const loginCandidate = async (req, res) => {
 ================================ */
 export const getAllCandidateDetails = async (req, res) => {
   try {
-    const candidates = await CandidateDetails.find()
+    const { driveId } = req.query;
+    const filter = {};
+    if (driveId) filter.driveId = driveId;
+
+    const candidates = await CandidateDetails.find(filter)
       .select("-password")
       .sort({ createdAt: -1 });
 
@@ -361,6 +370,7 @@ export const getMe = async (req, res) => {
         email: candidate.email,
         phone: candidate.phone,
         uniqueId: candidate.uniqueId,
+        driveId: candidate.driveId || null,
       },
     });
   } catch (error) {

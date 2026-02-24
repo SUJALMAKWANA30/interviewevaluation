@@ -30,6 +30,7 @@ import {
 } from "../../components/ui/Sheet";
 import * as XLSX from "xlsx";
 import { CandidateTable } from "../../components/Admin/CandidateTable";
+import { useDrive } from "../../context/DriveContext";
 
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
@@ -82,6 +83,9 @@ const HRDashboard = () => {
   const [newDataCount, setNewDataCount] = useState(0);
   const previousCountRef = useRef(0);
 
+  // Drive context
+  const { selectedDriveId, selectedDrive } = useDrive();
+
   // 🔥 FETCH DATA FROM BACKEND API
   const fetchCandidates = useCallback(async (isManualRefresh = false) => {
     try {
@@ -94,10 +98,13 @@ const HRDashboard = () => {
       const apiBase = configured.replace(/\/+$/g, "");
       const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
 
+      // Build query string for drive filtering
+      const driveQuery = selectedDriveId && selectedDriveId !== "all" ? `?driveId=${selectedDriveId}` : "";
+
       // Fetch candidates from our backend
       let candidatesList = [];
       try {
-        const res = await fetch(`${base}/candidate-details`);
+        const res = await fetch(`${base}/candidate-details${driveQuery}`);
         if (res.ok) {
           const json = await res.json();
           candidatesList = json.data || [];
@@ -109,7 +116,7 @@ const HRDashboard = () => {
       // Fetch quiz results from our backend
       let quizList = [];
       try {
-        const res = await fetch(`${base}/quizresult`);
+        const res = await fetch(`${base}/quizresult${driveQuery}`);
         if (res.ok) {
           const json = await res.json();
           quizList = json.data || [];
@@ -121,7 +128,7 @@ const HRDashboard = () => {
       // Fetch user time details from our backend
       let timeDetailsList = [];
       try {
-        const res = await fetch(`${base}/user-time-details`);
+        const res = await fetch(`${base}/user-time-details${driveQuery}`);
         if (res.ok) {
           const json = await res.json();
           timeDetailsList = json.data || [];
@@ -245,7 +252,7 @@ const HRDashboard = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [selectedDriveId]);
 
   // Initial fetch
   useEffect(() => {
