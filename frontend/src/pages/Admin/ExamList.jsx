@@ -1,41 +1,114 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
   LayoutGrid,
   List,
-  FileText,
+  Trash2,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { examAPI } from "../../utils/api";
 
 export default function ExamsList() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState("cards");
   const [search, setSearch] = useState("");
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState(null);
 
-  // 🔥 Replace with API later
-  const exams = [
-    {
-      _id: "1",
-      title: "Backend Developer Assessment",
-      status: "Draft",
-      createdAt: "2026-02-15",
-      sections: 3,
-      questions: 25,
-    },
-    {
-      _id: "2",
-      title: "Frontend Developer Test",
-      status: "Published",
-      createdAt: "2026-02-10",
-      sections: 2,
-      questions: 18,
-    },
-  ];
+  // Fetch exams from DB
+  const fetchExams = async () => {
+    try {
+      const res = await examAPI.getAllExams();
+      if (res.success) {
+        setExams(res.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch exams:", err);
+      toast.error("Failed to load exams.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExams();
+  }, []);
+
+  // Toggle active status
+  const handleToggleActive = async (e, examId) => {
+    e.stopPropagation();
+    setTogglingId(examId);
+    try {
+      const res = await examAPI.toggleActive(examId);
+      if (res.success) {
+        toast.success(res.message);
+        // Update local state
+        setExams((prev) =>
+          prev.map((ex) => ({
+            ...ex,
+            isActive: ex._id === examId ? res.data.isActive : false,
+            status: ex._id === examId && res.data.isActive ? "Published" : ex._id === examId ? ex.status : ex.isActive ? "Draft" : ex.status,
+          }))
+        );
+      }
+    } catch (err) {
+      toast.error("Failed to toggle exam status.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // Delete exam
+  const handleDeleteExam = async (e, examId) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this exam?")) return;
+    try {
+      const res = await examAPI.deleteExam(examId);
+      if (res.success) {
+        toast.success("Exam deleted.");
+        setExams((prev) => prev.filter((ex) => ex._id !== examId));
+      }
+    } catch (err) {
+      toast.error("Failed to delete exam.");
+    }
+  };
 
   const filteredExams = exams.filter((exam) =>
     exam.title.toLowerCase().includes(search.toLowerCase())
   );
+
+  const getSectionCount = (exam) =>
+    Array.isArray(exam.sections) ? exam.sections.length : 0;
+
+  const getQuestionCount = (exam) =>
+    Array.isArray(exam.sections)
+      ? exam.sections.reduce(
+          (acc, sec) =>
+            acc + (Array.isArray(sec.questions) ? sec.questions.length : 0),
+          0
+        )
+      : 0;
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+        <Loader2 className="animate-spin text-blue-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-left bg-[#f8fafc] p-8">
@@ -53,14 +126,6 @@ export default function ExamsList() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* <button
-              onClick={() => navigate("/hr/forms")}
-              className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-lg text-sm bg-white hover:bg-gray-50"
-            >
-              <FileText size={16} />
-              Forms
-            </button> */}
-
             <button
               onClick={() => navigate("/hr/exams/create")}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer"
@@ -133,34 +198,67 @@ export default function ExamsList() {
             {filteredExams.map((exam) => (
               <div
                 key={exam._id}
-                onClick={() =>
-                  navigate(`/hr/exams/${exam._id}/builder`)
-                }
-                className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer hover:shadow-md transition"
+                className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition relative"
               >
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium text-gray-900">
-                    {exam.title}
-                  </h3>
+                {/* Card content - clickable area */}
+                <div
+                  className="cursor-pointer"
+                  onClick={() =>
+                    navigate(`/hr/exams/${exam._id}/builder`)
+                  }
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-medium text-gray-900 pr-2">
+                      {exam.title}
+                    </h3>
 
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      exam.status === "Published"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {exam.status}
-                  </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${
+                        exam.isActive
+                          ? "bg-green-100 text-green-700"
+                          : exam.status === "Published"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {exam.isActive ? "Active" : exam.status}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-500 mb-3">
+                    Created: {formatDate(exam.createdAt)}
+                  </p>
+
+                  <div className="text-xs text-gray-600 flex justify-between mb-4">
+                    <span>{getSectionCount(exam)} Sections</span>
+                    <span>{getQuestionCount(exam)} Questions</span>
+                  </div>
                 </div>
 
-                <p className="text-xs text-gray-500 mb-3">
-                  Created: {exam.createdAt}
-                </p>
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={(e) => handleToggleActive(e, exam._id)}
+                    disabled={togglingId === exam._id}
+                    className={`flex-1 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer ${
+                      exam.isActive
+                        ? "bg-green-600 text-white hover:bg-green-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    } disabled:opacity-50`}
+                  >
+                    {togglingId === exam._id
+                      ? "..."
+                      : exam.isActive
+                      ? "Active ✓"
+                      : "Set Active"}
+                  </button>
 
-                <div className="text-xs text-gray-600 flex justify-between">
-                  <span>{exam.sections} Sections</span>
-                  <span>{exam.questions} Questions</span>
+                  <button
+                    onClick={(e) => handleDeleteExam(e, exam._id)}
+                    className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -176,22 +274,62 @@ export default function ExamsList() {
                   <th className="text-left px-6 py-3">Sections</th>
                   <th className="text-left px-6 py-3">Questions</th>
                   <th className="text-left px-6 py-3">Created</th>
+                  <th className="text-left px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredExams.map((exam) => (
                   <tr
                     key={exam._id}
-                    className="border-t hover:bg-gray-50 cursor-pointer"
-                    onClick={() =>
-                      navigate(`/hr/exams/${exam._id}/builder`)
-                    }
+                    className="border-t hover:bg-gray-50"
                   >
-                    <td className="px-6 py-4">{exam.title}</td>
-                    <td className="px-6 py-4">{exam.status}</td>
-                    <td className="px-6 py-4">{exam.sections}</td>
-                    <td className="px-6 py-4">{exam.questions}</td>
-                    <td className="px-6 py-4">{exam.createdAt}</td>
+                    <td
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() =>
+                        navigate(`/hr/exams/${exam._id}/builder`)
+                      }
+                    >
+                      {exam.title}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          exam.isActive
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {exam.isActive ? "Active" : exam.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{getSectionCount(exam)}</td>
+                    <td className="px-6 py-4">{getQuestionCount(exam)}</td>
+                    <td className="px-6 py-4">{formatDate(exam.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleToggleActive(e, exam._id)}
+                          disabled={togglingId === exam._id}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                            exam.isActive
+                              ? "bg-green-600 text-white hover:bg-green-700"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          } disabled:opacity-50`}
+                        >
+                          {togglingId === exam._id
+                            ? "..."
+                            : exam.isActive
+                            ? "Active ✓"
+                            : "Set Active"}
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteExam(e, exam._id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

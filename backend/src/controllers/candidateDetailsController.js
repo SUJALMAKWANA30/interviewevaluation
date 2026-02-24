@@ -1,6 +1,7 @@
 import CandidateDetails from "../models/CandidateDetails.js";
 import { uploadFileToDrive } from "../services/googleDriveService.js";
 import jwt from "jsonwebtoken";
+import UserTimeDetails from "../models/UserTimeDetails.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
@@ -75,27 +76,21 @@ export const registerCandidate = async (req, res) => {
           }
         }
       } catch (e) {
-        console.warn("Failed to parse documentUrls:", e.message);
-      }
+      // Failed to parse documentUrls
+    }
     }
 
     // Try to upload files to Google Drive, but don't block registration if it fails
     try {
       if (req.files) {
-        console.log("📁 Files received for upload:", Object.keys(req.files).join(", "));
-
         const uploadFile = async (file, folder, linkKey) => {
           try {
-            console.log(`⬆️  Uploading ${linkKey}: ${file.originalname} (${(file.size / 1024).toFixed(1)}KB)`);
             const result = await uploadFileToDrive(file, folder);
             if (result && result.directLink) {
               documentLinks[linkKey] = result.directLink;
-              console.log(`✅ ${linkKey} uploaded: ${result.directLink}`);
-            } else {
-              console.warn(`⚠️  ${linkKey} upload returned no link`);
             }
           } catch (err) {
-            console.error(`❌ ${linkKey} upload failed:`, err.message);
+            // upload failed, continue without this document
           }
         };
 
@@ -118,10 +113,9 @@ export const registerCandidate = async (req, res) => {
         }
 
         await Promise.allSettled(uploadPromises);
-        console.log("📋 Final document links:", JSON.stringify(documentLinks, null, 2));
       }
     } catch (uploadError) {
-      console.warn("File upload process failed, continuing without documents:", uploadError.message);
+      // File upload process failed, continuing without documents
     }
 
     // Parse skills if it's a string
@@ -189,8 +183,22 @@ export const registerCandidate = async (req, res) => {
         documents: candidate.documents,
       },
     });
+    try {
+      const existing = await UserTimeDetails.findOne({ email: candidate.email.toLowerCase() });
+      if (!existing) {
+        await UserTimeDetails.create({
+          email: candidate.email.toLowerCase(),
+          phone: candidate.phone,
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          photo: (candidate?.documents?.photo || "").toString(),
+          passwordHash: candidate.password,
+        });
+      }
+    } catch (e) {
+      // Failed to initialize UserTimeDetails
+    }
   } catch (error) {
-    console.error("Registration error:", error);
     res.status(500).json({
       success: false,
       message: "Registration failed. Please try again.",
@@ -246,6 +254,7 @@ export const loginCandidate = async (req, res) => {
       candidate.attendance = true;
       await candidate.save();
     }
+    // Do not reset timing data on login; preserve start/end/completion to enforce single attempt
 
     // Generate JWT token
     const token = jwt.sign(
@@ -270,7 +279,6 @@ export const loginCandidate = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
     res.status(500).json({
       success: false,
       message: "Login failed. Please try again.",
@@ -294,7 +302,6 @@ export const getAllCandidateDetails = async (req, res) => {
       data: candidates,
     });
   } catch (error) {
-    console.error("Error fetching candidates:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch candidates",
@@ -322,12 +329,42 @@ export const getCandidateDetailsById = async (req, res) => {
       data: candidate,
     });
   } catch (error) {
-    console.error("Error fetching candidate:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching candidate",
       error: error.message,
     });
+  }
+};
+
+/* ===============================
+   GET CURRENT USER (via JWT)
+================================ */
+export const getMe = async (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const candidate = await CandidateDetails.findById(decoded.id).select("-password");
+    if (!candidate) {
+      return res.status(404).json({ success: false, message: "Candidate not found" });
+    }
+    res.status(200).json({
+      success: true,
+      data: {
+        id: candidate._id,
+        firstName: candidate.firstName,
+        lastName: candidate.lastName,
+        email: candidate.email,
+        phone: candidate.phone,
+        uniqueId: candidate.uniqueId,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch current user", error: error.message });
   }
 };
 
@@ -361,7 +398,6 @@ export const updateCandidateDetails = async (req, res) => {
       data: candidate,
     });
   } catch (error) {
-    console.error("Error updating candidate:", error);
     res.status(500).json({
       success: false,
       message: "Error updating candidate",

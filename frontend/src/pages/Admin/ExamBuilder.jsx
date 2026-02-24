@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Trash2,
   Save,
@@ -7,6 +8,8 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { examAPI } from "../../utils/api";
 
 const defaultQuestion = () => ({
   id: Math.random().toString(36).substring(2, 9),
@@ -24,8 +27,12 @@ const defaultSection = () => ({
 });
 
 export default function ExamBuilder() {
+  const navigate = useNavigate();
+  const { id: examId } = useParams();
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState({
-    title: "Software Developer Assessment",
+    title: "",
     duration: 30,
     sections: [],
   });
@@ -36,6 +43,83 @@ export default function ExamBuilder() {
     sectionId: null,
     questionId: null,
   });
+
+  // Load existing exam for editing
+  useEffect(() => {
+    if (examId) {
+      setLoading(true);
+      examAPI
+        .getExamById(examId)
+        .then((res) => {
+          if (res.success && res.data) {
+            const d = res.data;
+            setExam({
+              title: d.title || "",
+              duration: d.duration || 30,
+              sections: (d.sections || []).map((s) => ({
+                id: s._id || Math.random().toString(36).substring(2, 9),
+                title: s.title || "",
+                duration: s.duration || 10,
+                collapsed: false,
+                questions: (s.questions || []).map((q) => ({
+                  id: q._id || Math.random().toString(36).substring(2, 9),
+                  question: q.question || "",
+                  options: q.options || ["", "", "", ""],
+                  correctAnswer: q.correctAnswer ?? 0,
+                })),
+              })),
+            });
+          }
+        })
+        .catch(() => toast.error("Failed to load exam"))
+        .finally(() => setLoading(false));
+    }
+  }, [examId]);
+
+  // Save exam to DB
+  const handleSaveExam = async () => {
+    if (!exam.title.trim()) {
+      toast.error("Please enter an exam title.");
+      return;
+    }
+    if (!exam.sections.length) {
+      toast.error("Please add at least one section.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        title: exam.title,
+        duration: Number(exam.duration),
+        sections: exam.sections.map((s) => ({
+          title: s.title,
+          duration: Number(s.duration),
+          questions: s.questions.map((q) => ({
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+          })),
+        })),
+      };
+
+      let res;
+      if (examId) {
+        res = await examAPI.updateExam(examId, payload);
+      } else {
+        res = await examAPI.createExam(payload);
+      }
+
+      if (res.success) {
+        toast.success(examId ? "Exam updated!" : "Exam created!");
+        navigate("/hr/exam");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to save exam.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const totalQuestions = exam.sections.reduce(
     (acc, sec) => acc + sec.questions.length,
@@ -152,9 +236,13 @@ export default function ExamBuilder() {
             </p>
           </div>
 
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm cursor-pointer">
+          <button
+            onClick={handleSaveExam}
+            disabled={saving}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm cursor-pointer disabled:opacity-50"
+          >
             <Save size={16} />
-            Save Exam
+            {saving ? "Saving..." : examId ? "Update Exam" : "Save Exam"}
           </button>
         </div>
 
