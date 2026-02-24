@@ -15,6 +15,7 @@ const quizResultSchema = new mongoose.Schema(
     ],
     totalMarks: { type: Number, required: true },
     examDate: { type: Date, default: Date.now },
+    driveId: { type: mongoose.Schema.Types.ObjectId, ref: "Drive", default: null },
   },
   { timestamps: true }
 );

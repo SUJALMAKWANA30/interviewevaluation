@@ -12,6 +12,7 @@ import locationRoutes from "./routes/locationRoutes.js";
 import quizResultRoutes from "./routes/quizResultRoutes.js";
 import userTimeDetailsRoutes from "./routes/userTimeDetailsRoutes.js";
 import examRoutes from "./routes/examRoutes.js";
+import driveRoutes from "./routes/driveRoutes.js";
 
 import { loadLocationTokens } from "./utils/locationTokens.js";
 
@@ -34,5 +35,6 @@ app.use("/api/location", locationRoutes);
 app.use("/api/quizresult", quizResultRoutes);
 app.use("/api/user-time-details", userTimeDetailsRoutes);
 app.use("/api/exams", examRoutes);
+app.use("/api/drives", driveRoutes);
 
 export default app;

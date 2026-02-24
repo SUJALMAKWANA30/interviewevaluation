@@ -15,6 +15,7 @@ import HRDashboard from "./pages/Admin/HRDashboard";
 import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
+import DriveManager from "./pages/Admin/DriveManager";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
@@ -122,6 +123,14 @@ function App() {
           element={
             <HRLayout>
               <ExamBuilder />
+            </HRLayout>
+          }
+        />
+        <Route
+          path="/hr/drives"
+          element={
+            <HRLayout>
+              <DriveManager />
             </HRLayout>
           }
         />
