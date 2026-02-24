@@ -134,6 +134,7 @@ function App() {
           }
         />
         
+        <Route
           path="/hr/exams/:id/builder"
           element={
             <HRLayout>
