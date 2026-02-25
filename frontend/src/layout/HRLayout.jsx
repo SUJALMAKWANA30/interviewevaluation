@@ -17,7 +17,7 @@ export default function HRLayout({ children }) {
 
             <div className="flex items-center justify-end gap-6">
               <span className="text-sm font-medium text-gray-700">
-                HR Executive
+                HR 
               </span>
 
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
