@@ -15,6 +15,7 @@ import HRDashboard from "./pages/Admin/HRDashboard";
 import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
+import Round from "./pages/Admin/Round";
 import DriveManager from "./pages/Admin/DriveManager";
 import HRLayout from "./layout/HRLayout";
 
@@ -123,6 +124,14 @@ function App() {
           element={
             <HRLayout>
               <ExamBuilder />
+            </HRLayout>
+          }
+        />
+        <Route
+          path="/hr/rounds"
+          element={
+            <HRLayout>
+              <Round />
             </HRLayout>
           }
         />

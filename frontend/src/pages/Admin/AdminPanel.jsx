@@ -85,6 +85,61 @@ export default function AdminPanel() {
     setIsModalOpen(false);
   };
 
+  // const [loading, setLoading] = useState(true);
+
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setLoading(false);
+  //   }, 800); // simulate load
+  //   return () => clearTimeout(timer);
+  // }, []);
+
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-100 px-6 animate-pulse">
+  //       {/* Title */}
+  //       <div className="mb-8">
+  //         <div className="h-7 w-52 bg-gray-300 rounded mb-2"></div>
+  //         <div className="h-4 w-72 bg-gray-200 rounded"></div>
+  //       </div>
+
+  //       {/* HR Users Skeleton */}
+  //       <div className="bg-white rounded-xl border border-gray-200 mb-10 p-6">
+  //         <div className="flex justify-between items-center mb-6">
+  //           <div className="h-5 w-28 bg-gray-300 rounded"></div>
+  //           <div className="h-9 w-32 bg-gray-300 rounded-lg"></div>
+  //         </div>
+
+  //         <div className="space-y-4">
+  //           {[...Array(4)].map((_, i) => (
+  //             <div key={i} className="grid grid-cols-5 gap-4 items-center">
+  //               <div className="h-4 bg-gray-200 rounded col-span-1"></div>
+  //               <div className="h-4 bg-gray-200 rounded col-span-1"></div>
+  //               <div className="h-6 bg-gray-200 rounded-full col-span-1 w-24"></div>
+  //               <div className="h-6 bg-gray-200 rounded-full col-span-1 w-20"></div>
+  //               <div className="h-4 bg-gray-200 rounded col-span-1 w-16"></div>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       </div>
+
+  //       {/* Permission Matrix Skeleton */}
+  //       <div className="bg-white rounded-xl border border-gray-200 p-6">
+  //         <div className="h-5 w-40 bg-gray-300 rounded mb-6"></div>
+
+  //         {[...Array(6)].map((_, i) => (
+  //           <div key={i} className="grid grid-cols-4 gap-6 items-center mb-6">
+  //             <div className="h-4 bg-gray-200 rounded"></div>
+  //             <div className="h-6 w-12 bg-gray-200 rounded-full"></div>
+  //             <div className="h-6 w-12 bg-gray-200 rounded-full"></div>
+  //             <div className="h-6 w-12 bg-gray-200 rounded-full"></div>
+  //           </div>
+  //         ))}
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
   return (
     <div className="min-h-screen bg-gray-100 px-6">
       {/* ===== TITLE ===== */}

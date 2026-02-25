@@ -82,7 +82,9 @@ export default function DriveManager() {
 
       if (res.ok) {
         toast.success(
-          editingDrive ? "Drive updated successfully" : "Drive created successfully"
+          editingDrive
+            ? "Drive updated successfully"
+            : "Drive created successfully",
         );
         resetForm();
         fetchDrives();
@@ -99,14 +101,13 @@ export default function DriveManager() {
 
   const handleToggleStatus = async (drive) => {
     try {
-      const res = await fetch(
-        `${API_BASE}/drives/${drive._id}/toggle-status`,
-        { method: "PATCH" }
-      );
+      const res = await fetch(`${API_BASE}/drives/${drive._id}/toggle-status`, {
+        method: "PATCH",
+      });
       if (res.ok) {
         const json = await res.json();
         toast.success(
-          json.data.isActive ? "Drive activated" : "Drive deactivated"
+          json.data.isActive ? "Drive activated" : "Drive deactivated",
         );
         fetchDrives();
       }
@@ -144,8 +145,51 @@ export default function DriveManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="w-full text-left animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-48 bg-gray-200 rounded-md"></div>
+            <div className="mt-2 h-4 w-72 bg-gray-100 rounded-md"></div>
+          </div>
+          <div className="h-10 w-36 bg-gray-200 rounded-lg"></div>
+        </div>
+
+        {/* Drive Cards Skeleton */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-gray-200 bg-white p-6"
+            >
+              {/* Status + Actions */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                <div className="flex gap-2">
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="h-5 w-40 bg-gray-300 rounded mb-3"></div>
+
+              {/* Location */}
+              <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+
+              {/* Date */}
+              <div className="h-4 w-28 bg-gray-200 rounded mb-2"></div>
+
+              {/* Description */}
+              <div className="h-4 w-full bg-gray-100 rounded mb-2"></div>
+              <div className="h-4 w-3/4 bg-gray-100 rounded mb-4"></div>
+
+              {/* Footer */}
+              <div className="h-3 w-24 bg-gray-100 rounded"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

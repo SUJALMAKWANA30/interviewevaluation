@@ -23,7 +23,7 @@ function ProfilePopup({ user, onLogout }) {
       {/* Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold hover:opacity-90 transition"
+        className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold hover:opacity-90 transition cursor-pointer"
       >
         {user?.firstName?.[0] ?? "U"}
       </button>

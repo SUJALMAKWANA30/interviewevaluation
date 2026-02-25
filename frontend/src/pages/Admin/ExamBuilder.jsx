@@ -222,7 +222,7 @@ export default function ExamBuilder() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] px-6 py-8">
+    <div className="min-h-screen bg-[#f8fafc] px-6 py-8 text-left">
       <div className="max-w-4xl mx-auto">
 
         {/* HEADER */}

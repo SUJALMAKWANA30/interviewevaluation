@@ -34,11 +34,15 @@ export default function HrDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const configured = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const configured =
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
       const apiBase = configured.replace(/\/+$/g, "");
       const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
 
-      const driveQuery = selectedDriveId && selectedDriveId !== "all" ? `?driveId=${selectedDriveId}` : "";
+      const driveQuery =
+        selectedDriveId && selectedDriveId !== "all"
+          ? `?driveId=${selectedDriveId}`
+          : "";
 
       try {
         const [candRes, quizRes, examRes] = await Promise.allSettled([
@@ -71,12 +75,23 @@ export default function HrDashboard() {
   // Compute stats from real data
   const totalCandidates = candidates.length;
   const activeExams = exams.filter((e) => e.isActive).length;
-  const completedExams = candidates.filter((c) => c.examStatus === "completed").length;
-  const inProgressExams = candidates.filter((c) => c.examStatus === "in_progress").length;
-  const notStartedExams = candidates.filter((c) => c.examStatus === "not_started").length;
-  const passRate = quizResults.length > 0
-    ? ((quizResults.filter((q) => q.totalMarks >= 13).length / quizResults.length) * 100).toFixed(1)
-    : "0";
+  const completedExams = candidates.filter(
+    (c) => c.examStatus === "completed",
+  ).length;
+  const inProgressExams = candidates.filter(
+    (c) => c.examStatus === "in_progress",
+  ).length;
+  const notStartedExams = candidates.filter(
+    (c) => c.examStatus === "not_started",
+  ).length;
+  const passRate =
+    quizResults.length > 0
+      ? (
+          (quizResults.filter((q) => q.totalMarks >= 13).length /
+            quizResults.length) *
+          100
+        ).toFixed(1)
+      : "0";
 
   const stats = [
     {
@@ -110,12 +125,19 @@ export default function HrDashboard() {
   ];
 
   // Pie data from real stats
-  const pieData = useMemo(() => [
-    { name: "Not Started", value: notStartedExams || 0, color: "#94a3b8" },
-    { name: "In Progress", value: inProgressExams || 0, color: "#f59e0b" },
-    { name: "Completed", value: completedExams || 0, color: "#22c55e" },
-    { name: "Quiz Submitted", value: quizResults.length || 0, color: "#2563eb" },
-  ], [notStartedExams, inProgressExams, completedExams, quizResults.length]);
+  const pieData = useMemo(
+    () => [
+      { name: "Not Started", value: notStartedExams || 0, color: "#94a3b8" },
+      { name: "In Progress", value: inProgressExams || 0, color: "#f59e0b" },
+      { name: "Completed", value: completedExams || 0, color: "#22c55e" },
+      {
+        name: "Quiz Submitted",
+        value: quizResults.length || 0,
+        color: "#2563eb",
+      },
+    ],
+    [notStartedExams, inProgressExams, completedExams, quizResults.length],
+  );
 
   // Bar data: group candidates by registration month
   const barData = useMemo(() => {
@@ -124,18 +146,26 @@ export default function HrDashboard() {
     candidates.forEach((c) => {
       if (c.createdAt) {
         const d = new Date(c.createdAt);
-        const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
+        const key = d.toLocaleString("default", {
+          month: "short",
+          year: "2-digit",
+        });
         monthMap[key] = (monthMap[key] || 0) + 1;
       }
     });
     quizResults.forEach((q) => {
       if (q.createdAt) {
         const d = new Date(q.createdAt);
-        const key = d.toLocaleString("default", { month: "short", year: "2-digit" });
+        const key = d.toLocaleString("default", {
+          month: "short",
+          year: "2-digit",
+        });
         quizMonthMap[key] = (quizMonthMap[key] || 0) + 1;
       }
     });
-    const allMonths = [...new Set([...Object.keys(monthMap), ...Object.keys(quizMonthMap)])];
+    const allMonths = [
+      ...new Set([...Object.keys(monthMap), ...Object.keys(quizMonthMap)]),
+    ];
     // Sort by date
     allMonths.sort((a, b) => {
       const da = new Date(`1 ${a}`);
@@ -152,7 +182,7 @@ export default function HrDashboard() {
   // Recent activity from candidates sorted by createdAt
   const recentActivity = useMemo(() => {
     const sorted = [...candidates].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
     return sorted.slice(0, 5).map((c) => {
       const timeDiff = Date.now() - new Date(c.createdAt).getTime();
@@ -180,8 +210,69 @@ export default function HrDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="w-full text-left animate-pulse">
+        {/* Header Skeleton */}
+        <div className="mb-10">
+          <div className="h-7 w-48 bg-gray-200 rounded-md"></div>
+          <div className="mt-2 h-4 w-80 bg-gray-100 rounded-md"></div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-gray-200 bg-white px-6 py-5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="h-12 w-12 bg-gray-200 rounded-lg"></div>
+                <div className="h-4 w-20 bg-gray-200 rounded"></div>
+              </div>
+
+              <div className="mt-5">
+                <div className="h-8 w-20 bg-gray-300 rounded-md"></div>
+                <div className="mt-2 h-4 w-32 bg-gray-200 rounded-md"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="mt-10 grid grid-cols-1 gap-6 xl:grid-cols-5">
+          {/* Bar Chart */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-7 shadow-sm xl:col-span-3">
+            <div className="h-4 w-48 bg-gray-200 rounded mb-2"></div>
+            <div className="h-3 w-32 bg-gray-100 rounded mb-6"></div>
+            <div className="h-64 bg-gray-100 rounded-xl"></div>
+          </div>
+
+          {/* Pie Chart */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-7 shadow-sm xl:col-span-2">
+            <div className="h-4 w-40 bg-gray-200 rounded mb-2"></div>
+            <div className="h-3 w-28 bg-gray-100 rounded mb-6"></div>
+            <div className="h-64 bg-gray-100 rounded-full"></div>
+          </div>
+        </div>
+
+        {/* Recent Activity Skeleton */}
+        <div className="mt-10 rounded-2xl border border-gray-100 bg-white p-7 shadow-sm">
+          <div className="h-4 w-40 bg-gray-200 rounded mb-6"></div>
+
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between py-5 border-b border-gray-100 last:border-none"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                <div>
+                  <div className="h-4 w-40 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 w-24 bg-gray-100 rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -263,7 +354,11 @@ export default function HrDashboard() {
                     fill="#2563eb"
                     radius={[6, 6, 0, 0]}
                   />
-                  <Bar dataKey="quizCompleted" fill="#14b8a6" radius={[6, 6, 0, 0]} />
+                  <Bar
+                    dataKey="quizCompleted"
+                    fill="#14b8a6"
+                    radius={[6, 6, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
