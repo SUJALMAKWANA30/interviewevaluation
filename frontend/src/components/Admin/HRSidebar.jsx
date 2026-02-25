@@ -20,9 +20,9 @@ import { useDrive } from "../../context/DriveContext";
 
 const navItems = [
   { label: "Dashboard", href: "/hr-home", icon: LayoutDashboard },
+  { label: "Drives Info", href: "/hr/drives", icon: MapPin },
   { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users },
   { label: "Exams", href: "/hr/exam", icon: FileText },
-  { label: "Drives", href: "/hr/drives", icon: MapPin },
   { label: "Rounds", href: "/hr/rounds", icon: GitBranch },
   { label: "Reports", href: "/hr/reports", icon: BarChart3 },
   { label: "Admin Settings", href: "/admin-settings", icon: Settings },

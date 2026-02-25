@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Plus,
-  Search,
-  LayoutGrid,
-  List,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import { Plus, Search, LayoutGrid, List, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { examAPI } from "../../utils/api";
 
@@ -18,6 +11,8 @@ export default function ExamsList() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState(null);
+  const [deleteExamId, setDeleteExamId] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Fetch exams from DB
   const fetchExams = async () => {
@@ -51,8 +46,15 @@ export default function ExamsList() {
           prev.map((ex) => ({
             ...ex,
             isActive: ex._id === examId ? res.data.isActive : false,
-            status: ex._id === examId && res.data.isActive ? "Published" : ex._id === examId ? ex.status : ex.isActive ? "Draft" : ex.status,
-          }))
+            status:
+              ex._id === examId && res.data.isActive
+                ? "Published"
+                : ex._id === examId
+                  ? ex.status
+                  : ex.isActive
+                    ? "Draft"
+                    : ex.status,
+          })),
         );
       }
     } catch (err) {
@@ -63,22 +65,14 @@ export default function ExamsList() {
   };
 
   // Delete exam
-  const handleDeleteExam = async (e, examId) => {
+  const handleDeleteExam = (e, examId) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this exam?")) return;
-    try {
-      const res = await examAPI.deleteExam(examId);
-      if (res.success) {
-        toast.success("Exam deleted.");
-        setExams((prev) => prev.filter((ex) => ex._id !== examId));
-      }
-    } catch (err) {
-      toast.error("Failed to delete exam.");
-    }
+    setDeleteExamId(examId);
+    setIsDeleteModalOpen(true);
   };
 
   const filteredExams = exams.filter((exam) =>
-    exam.title.toLowerCase().includes(search.toLowerCase())
+    exam.title.toLowerCase().includes(search.toLowerCase()),
   );
 
   const getSectionCount = (exam) =>
@@ -89,7 +83,7 @@ export default function ExamsList() {
       ? exam.sections.reduce(
           (acc, sec) =>
             acc + (Array.isArray(sec.questions) ? sec.questions.length : 0),
-          0
+          0,
         )
       : 0;
 
@@ -100,6 +94,23 @@ export default function ExamsList() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const confirmDeleteExam = async () => {
+    if (!deleteExamId) return;
+
+    try {
+      const res = await examAPI.deleteExam(deleteExamId);
+      if (res.success) {
+        toast.success("Exam deleted.");
+        setExams((prev) => prev.filter((ex) => ex._id !== deleteExamId));
+      }
+    } catch (err) {
+      toast.error("Failed to delete exam.");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteExamId(null);
+    }
   };
 
   if (loading) {
@@ -113,13 +124,10 @@ export default function ExamsList() {
   return (
     <div className="min-h-screen text-left bg-[#f8fafc] p-8">
       <div className="max-w-6xl mx-auto">
-
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Exams
-            </h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Exams</h1>
             <p className="text-sm text-gray-500">
               Manage and create assessment exams
             </p>
@@ -182,9 +190,7 @@ export default function ExamsList() {
         {/* Empty State */}
         {filteredExams.length === 0 ? (
           <div className="bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
-            <p className="text-gray-500 mb-3">
-              No exams found.
-            </p>
+            <p className="text-gray-500 mb-3">No exams found.</p>
             <button
               onClick={() => navigate("/hr/exams/create")}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
@@ -203,9 +209,7 @@ export default function ExamsList() {
                 {/* Card content - clickable area */}
                 <div
                   className="cursor-pointer"
-                  onClick={() =>
-                    navigate(`/hr/exams/${exam._id}/builder`)
-                  }
+                  onClick={() => navigate(`/hr/exams/${exam._id}/builder`)}
                 >
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="font-medium text-gray-900 pr-2">
@@ -217,8 +221,8 @@ export default function ExamsList() {
                         exam.isActive
                           ? "bg-green-100 text-green-700"
                           : exam.status === "Published"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-yellow-100 text-yellow-700"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-yellow-100 text-yellow-700"
                       }`}
                     >
                       {exam.isActive ? "Active" : exam.status}
@@ -249,8 +253,8 @@ export default function ExamsList() {
                     {togglingId === exam._id
                       ? "..."
                       : exam.isActive
-                      ? "Active ✓"
-                      : "Set Active"}
+                        ? "Active ✓"
+                        : "Set Active"}
                   </button>
 
                   <button
@@ -279,15 +283,10 @@ export default function ExamsList() {
               </thead>
               <tbody>
                 {filteredExams.map((exam) => (
-                  <tr
-                    key={exam._id}
-                    className="border-t hover:bg-gray-50"
-                  >
+                  <tr key={exam._id} className="border-t hover:bg-gray-50">
                     <td
                       className="px-6 py-4 cursor-pointer"
-                      onClick={() =>
-                        navigate(`/hr/exams/${exam._id}/builder`)
-                      }
+                      onClick={() => navigate(`/hr/exams/${exam._id}/builder`)}
                     >
                       {exam.title}
                     </td>
@@ -319,8 +318,8 @@ export default function ExamsList() {
                           {togglingId === exam._id
                             ? "..."
                             : exam.isActive
-                            ? "Active ✓"
-                            : "Set Active"}
+                              ? "Active ✓"
+                              : "Set Active"}
                         </button>
                         <button
                           onClick={(e) => handleDeleteExam(e, exam._id)}
@@ -337,6 +336,37 @@ export default function ExamsList() {
           </div>
         )}
       </div>
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-100 p-6 text-center animate-fadeIn">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Are you sure?
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              This action cannot be undone.
+            </p>
+
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteExamId(null);
+                }}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={confirmDeleteExam}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

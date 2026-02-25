@@ -6,7 +6,7 @@ import "./App.css";
 // User Pages
 import UserLogin from './pages/User/UserLogin';
 import UserRegistration from './pages/User/UserRegistration';
-import UserExamPage from './pages/User/UserExamPage';
+import UserDashboard from './pages/User/UserDashboard';
 import QuizForm from './pages/User/QuizForm';
 
 // HR Pages
@@ -79,7 +79,7 @@ function App() {
           path="/user-dashboard"
           element={
             <ProtectedRoute requiredUserType="user">
-              <UserExamPage />
+              <UserDashboard />
             </ProtectedRoute>
           }
         />
