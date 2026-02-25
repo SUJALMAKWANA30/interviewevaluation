@@ -118,7 +118,7 @@ export default function UserDashboard() {
           </div>
 
           {/* RIGHT: Actions */}
-          <div className="flex items-center">
+          <div className="flex items-center cursor-pointer">
             <ProfilePopup user={user} onLogout={handleLogout} />
           </div>
         </div>
