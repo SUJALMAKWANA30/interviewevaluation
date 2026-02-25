@@ -11,6 +11,7 @@ const userTimeDetailsSchema = new mongoose.Schema(
     startTime: { type: Date, default: null },
     endTime: { type: Date, default: null },
     completionTime: { type: Number, default: null },
+    driveId: { type: mongoose.Schema.Types.ObjectId, ref: "Drive", default: null },
   },
   { timestamps: true }
 );

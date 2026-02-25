@@ -2,7 +2,7 @@ import QuizResult from "../models/QuizResult.js";
 
 export const createQuizResult = async (req, res) => {
   try {
-    const { email, mobileNumber, name, sectionWiseMarks, totalMarks } = req.body;
+    const { email, mobileNumber, name, sectionWiseMarks, totalMarks, driveId } = req.body;
     const newQuizResult = new QuizResult({
       email,
       mobileNumber,
@@ -10,6 +10,7 @@ export const createQuizResult = async (req, res) => {
       sectionWiseMarks,
       totalMarks,
       examDate: new Date(),
+      driveId: driveId || null,
     });
     await newQuizResult.save();
     res.status(201).json({
@@ -28,7 +29,11 @@ export const createQuizResult = async (req, res) => {
 
 export const getAllQuizResults = async (req, res) => {
   try {
-    const quizResults = await QuizResult.find().sort({ createdAt: -1 });
+    const { driveId } = req.query;
+    const filter = {};
+    if (driveId) filter.driveId = driveId;
+
+    const quizResults = await QuizResult.find(filter).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       data: quizResults,

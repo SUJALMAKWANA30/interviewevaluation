@@ -101,6 +101,7 @@ export default function QuizForm() {
           : meData.firstName || meData.email || "",
       sectionWiseMarks: sectionWiseMarks,
       totalMarks: totalScore,
+      driveId: meData.driveId || null,
     };
     try {
       const response = await quizResultAPI.saveQuizResult(quizResultData);

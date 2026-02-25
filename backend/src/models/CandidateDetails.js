@@ -64,6 +64,9 @@ const candidateDetailsSchema = new mongoose.Schema(
 
     // Attendance - set to true when candidate logs in
     attendance: { type: Boolean, default: false },
+
+    // Walk-in Drive association
+    driveId: { type: mongoose.Schema.Types.ObjectId, ref: "Drive", default: null },
   },
   { timestamps: true }
 );

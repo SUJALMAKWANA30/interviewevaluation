@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AlertCircle, Upload, X, Check, Eye, EyeOff, Link as LinkIcon, Monitor } from "lucide-react";
 
@@ -36,6 +36,9 @@ export default function UserRegistration() {
     password: "",
     confirmPassword: "",
     termsAccepted: false,
+
+    // Walk-in Drive
+    driveId: "",
   });
 
   // File states (Section 3)
@@ -71,7 +74,24 @@ export default function UserRegistration() {
   const [sectionErrors, setSectionErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [activeDrives, setActiveDrives] = useState([]);
   const navigate = useNavigate();
+
+  // Fetch active drives on mount
+  useEffect(() => {
+    const fetchActiveDrives = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/drives/active`);
+        if (res.ok) {
+          const json = await res.json();
+          setActiveDrives(json.data || []);
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchActiveDrives();
+  }, []);
 
   // File input refs
   const fileInputRefs = {
@@ -169,6 +189,9 @@ export default function UserRegistration() {
     }
     if (!formData.willingToRelocate) {
       errors.willingToRelocate = "Please select if you're willing to relocate";
+    }
+    if (!formData.driveId) {
+      errors.driveId = "Please select a walk-in drive";
     }
 
     setSectionErrors(errors);
@@ -314,6 +337,11 @@ export default function UserRegistration() {
       }
       submitData.append("preferredLocation", formData.preferredLocation.trim());
       submitData.append("willingToRelocate", formData.willingToRelocate);
+
+      // Walk-in Drive
+      if (formData.driveId) {
+        submitData.append("driveId", formData.driveId);
+      }
 
       // Add professional details
       submitData.append("positionApplied", formData.positionApplied.trim());
@@ -728,6 +756,39 @@ export default function UserRegistration() {
                   </div>
                   {sectionErrors.willingToRelocate && (
                     <p className="mt-1 text-sm text-red-600">{sectionErrors.willingToRelocate}</p>
+                  )}
+                </div>
+
+                {/* Walk-in Drive Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Walk-in Drive <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="driveId"
+                    value={formData.driveId}
+                    onChange={handleInputChange}
+                    className={`w-full h-11 rounded-lg border ${
+                      sectionErrors.driveId ? "border-red-300" : "border-gray-300"
+                    } px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white`}
+                  >
+                    <option value="">Select a drive location</option>
+                    {activeDrives.map((drive) => (
+                      <option key={drive._id} value={drive._id}>
+                        {drive.name} — {drive.location}
+                        {drive.date
+                          ? ` (${new Date(drive.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {sectionErrors.driveId && (
+                    <p className="mt-1 text-sm text-red-600">{sectionErrors.driveId}</p>
+                  )}
+                  {activeDrives.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      No active drives available. Please contact HR.
+                    </p>
                   )}
                 </div>
               </div>

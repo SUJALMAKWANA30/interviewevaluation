@@ -6,7 +6,11 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-producti
 
 export const getAllUserTimeDetails = async (req, res) => {
   try {
-    const records = await UserTimeDetails.find().sort({ createdAt: -1 });
+    const { driveId } = req.query;
+    const filter = {};
+    if (driveId) filter.driveId = driveId;
+
+    const records = await UserTimeDetails.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: records });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch all user time details", error: error.message });

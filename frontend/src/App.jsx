@@ -6,7 +6,7 @@ import "./App.css";
 // User Pages
 import UserLogin from './pages/User/UserLogin';
 import UserRegistration from './pages/User/UserRegistration';
-import UserExamPage from './pages/User/UserExamPage';
+import UserDashboard from './pages/User/UserDashboard';
 import QuizForm from './pages/User/QuizForm';
 
 // HR Pages
@@ -15,6 +15,7 @@ import HRDashboard from "./pages/Admin/HRDashboard";
 import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
+import DriveManager from "./pages/Admin/DriveManager";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
@@ -78,7 +79,7 @@ function App() {
           path="/user-dashboard"
           element={
             <ProtectedRoute requiredUserType="user">
-              <UserExamPage />
+              <UserDashboard />
             </ProtectedRoute>
           }
         />
@@ -126,6 +127,14 @@ function App() {
           }
         />
         <Route
+          path="/hr/drives"
+          element={
+            <HRLayout>
+              <DriveManager />
+            </HRLayout>
+          }
+        />
+        <Route
           path="/admin-settings"
           element={
             <HRLayout>
@@ -134,6 +143,7 @@ function App() {
           }
         />
         
+        <Route
           path="/hr/exams/:id/builder"
           element={
             <HRLayout>
