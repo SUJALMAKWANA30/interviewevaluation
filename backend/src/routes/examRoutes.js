@@ -8,18 +8,20 @@ import {
   toggleActiveExam,
   getActiveExam,
 } from "../controllers/examController.js";
+import { authenticate, authorizePermission } from "../middlewares/auth.js";
+import { validateExam, validateObjectId } from "../middlewares/validators.js";
 
 const router = express.Router();
 
 // Public route - get active exam (for user-side quiz)
 router.get("/active", getActiveExam);
 
-// HR routes
-router.post("/", createExam);
-router.get("/", getAllExams);
-router.get("/:id", getExamById);
-router.put("/:id", updateExam);
-router.delete("/:id", deleteExam);
-router.patch("/:id/toggle-active", toggleActiveExam);
+// Protected HR routes
+router.get("/", authenticate, getAllExams);
+router.get("/:id", authenticate, validateObjectId("id"), getExamById);
+router.post("/", authenticate, authorizePermission("exams", "create"), validateExam, createExam);
+router.put("/:id", authenticate, authorizePermission("exams", "edit"), validateObjectId("id"), updateExam);
+router.delete("/:id", authenticate, authorizePermission("exams", "delete"), validateObjectId("id"), deleteExam);
+router.patch("/:id/toggle-active", authenticate, authorizePermission("exams", "edit"), validateObjectId("id"), toggleActiveExam);
 
 export default router;

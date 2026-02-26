@@ -12,11 +12,7 @@ import {
   Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const API_BASE = API_BASE_URL.endsWith("/api")
-  ? API_BASE_URL
-  : `${API_BASE_URL}/api`;
+import { driveAPI } from "../../utils/apiClient";
 
 export default function DriveManager() {
   const [drives, setDrives] = useState([]);
@@ -33,11 +29,8 @@ export default function DriveManager() {
 
   const fetchDrives = async () => {
     try {
-      const res = await fetch(`${API_BASE}/drives`);
-      if (res.ok) {
-        const json = await res.json();
-        setDrives(json.data || []);
-      }
+      const res = await driveAPI.getAll();
+      setDrives(res.data || []);
     } catch {
       toast.error("Failed to fetch drives");
     } finally {
@@ -64,34 +57,30 @@ export default function DriveManager() {
 
     setSubmitting(true);
     try {
-      const url = editingDrive
-        ? `${API_BASE}/drives/${editingDrive._id}`
-        : `${API_BASE}/drives`;
-      const method = editingDrive ? "PUT" : "POST";
+      const payload = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        description: formData.description.trim(),
+        date: formData.date || null,
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          location: formData.location.trim(),
-          description: formData.description.trim(),
-          date: formData.date || null,
-        }),
-      });
+      const res = editingDrive
+        ? await driveAPI.update(editingDrive._id, payload)
+        : await driveAPI.create(payload);
 
-      if (res.ok) {
+      if (res.success) {
         toast.success(
-          editingDrive ? "Drive updated successfully" : "Drive created successfully"
+          editingDrive
+            ? "Drive updated successfully"
+            : "Drive created successfully",
         );
         resetForm();
         fetchDrives();
       } else {
-        const json = await res.json();
-        toast.error(json.message || "Failed to save drive");
+        toast.error(res.message || "Failed to save drive");
       }
-    } catch {
-      toast.error("Network error");
+    } catch (err) {
+      toast.error(err.message || "Network error");
     } finally {
       setSubmitting(false);
     }
@@ -99,17 +88,11 @@ export default function DriveManager() {
 
   const handleToggleStatus = async (drive) => {
     try {
-      const res = await fetch(
-        `${API_BASE}/drives/${drive._id}/toggle-status`,
-        { method: "PATCH" }
+      const res = await driveAPI.toggleStatus(drive._id);
+      toast.success(
+        res.data.isActive ? "Drive activated" : "Drive deactivated",
       );
-      if (res.ok) {
-        const json = await res.json();
-        toast.success(
-          json.data.isActive ? "Drive activated" : "Drive deactivated"
-        );
-        fetchDrives();
-      }
+      fetchDrives();
     } catch {
       toast.error("Failed to toggle drive status");
     }
@@ -119,13 +102,9 @@ export default function DriveManager() {
     if (!confirm(`Are you sure you want to delete "${drive.name}"?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/drives/${drive._id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Drive deleted");
-        fetchDrives();
-      }
+      await driveAPI.delete(drive._id);
+      toast.success("Drive deleted");
+      fetchDrives();
     } catch {
       toast.error("Failed to delete drive");
     }
@@ -144,8 +123,51 @@ export default function DriveManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="w-full text-left animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-7 w-48 bg-gray-200 rounded-md"></div>
+            <div className="mt-2 h-4 w-72 bg-gray-100 rounded-md"></div>
+          </div>
+          <div className="h-10 w-36 bg-gray-200 rounded-lg"></div>
+        </div>
+
+        {/* Drive Cards Skeleton */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-gray-200 bg-white p-6"
+            >
+              {/* Status + Actions */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                <div className="flex gap-2">
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+
+              {/* Title */}
+              <div className="h-5 w-40 bg-gray-300 rounded mb-3"></div>
+
+              {/* Location */}
+              <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+
+              {/* Date */}
+              <div className="h-4 w-28 bg-gray-200 rounded mb-2"></div>
+
+              {/* Description */}
+              <div className="h-4 w-full bg-gray-100 rounded mb-2"></div>
+              <div className="h-4 w-3/4 bg-gray-100 rounded mb-4"></div>
+
+              {/* Footer */}
+              <div className="h-3 w-24 bg-gray-100 rounded"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

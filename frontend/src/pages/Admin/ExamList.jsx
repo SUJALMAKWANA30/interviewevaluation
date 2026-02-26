@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, LayoutGrid, List, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { examAPI } from "../../utils/api";
+import { examAPI } from "../../utils/apiClient";
 
 export default function ExamsList() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function ExamsList() {
   // Fetch exams from DB
   const fetchExams = async () => {
     try {
-      const res = await examAPI.getAllExams();
+      const res = await examAPI.getAll();
       if (res.success) {
         setExams(res.data || []);
       }
@@ -100,7 +100,7 @@ export default function ExamsList() {
     if (!deleteExamId) return;
 
     try {
-      const res = await examAPI.deleteExam(deleteExamId);
+      const res = await examAPI.delete(deleteExamId);
       if (res.success) {
         toast.success("Exam deleted.");
         setExams((prev) => prev.filter((ex) => ex._id !== deleteExamId));
@@ -115,8 +115,50 @@ export default function ExamsList() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+      <div className="min-h-screen text-left bg-[#f8fafc] p-8 animate-pulse">
+        <div className="max-w-6xl mx-auto">
+          {/* Header Skeleton */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <div className="h-7 w-40 bg-gray-300 rounded mb-2"></div>
+              <div className="h-4 w-64 bg-gray-200 rounded"></div>
+            </div>
+            <div className="h-10 w-36 bg-gray-300 rounded-lg"></div>
+          </div>
+
+          {/* Controls Skeleton */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex justify-between items-center">
+            <div className="h-9 w-72 bg-gray-200 rounded-lg"></div>
+            <div className="h-9 w-40 bg-gray-200 rounded-lg"></div>
+          </div>
+
+          {/* Cards Skeleton */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white border border-gray-200 rounded-xl p-5"
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <div className="h-5 w-32 bg-gray-300 rounded"></div>
+                  <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+                </div>
+
+                <div className="h-4 w-40 bg-gray-200 rounded mb-3"></div>
+
+                <div className="flex justify-between mb-4">
+                  <div className="h-4 w-20 bg-gray-200 rounded"></div>
+                  <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-gray-100">
+                  <div className="h-8 flex-1 bg-gray-200 rounded-lg"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -352,14 +394,14 @@ export default function ExamsList() {
                   setIsDeleteModalOpen(false);
                   setDeleteExamId(null);
                 }}
-                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition cursor-pointer"
               >
                 Cancel
               </button>
 
               <button
                 onClick={confirmDeleteExam}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition cursor-pointer"
               >
                 Delete
               </button>

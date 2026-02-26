@@ -13,6 +13,7 @@ import {
   LogOut,
   MapPin,
   ChevronDown,
+  Calendar,
 } from "lucide-react";
 
 import { cn } from "../../utils/cn";
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users },
   { label: "Exams", href: "/hr/exam", icon: FileText },
   { label: "Rounds", href: "/hr/rounds", icon: GitBranch },
+  { label: "Schedule", href: "/hr/schedule", icon: Calendar },
   { label: "Reports", href: "/hr/reports", icon: BarChart3 },
   { label: "Admin Settings", href: "/admin-settings", icon: Settings },
 ];

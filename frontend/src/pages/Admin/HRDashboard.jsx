@@ -31,20 +31,10 @@ import {
 import * as XLSX from "xlsx";
 import { CandidateTable } from "../../components/Admin/CandidateTable";
 import { useDrive } from "../../context/DriveContext";
+import { candidateAPI, adminAPI, apiClient } from "../../utils/apiClient";
 
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
-
-// Temporary interviewer names list
-const INTERVIEWER_NAMES = [
-  "Rahul Sharma",
-  "Priya Patel",
-  "Amit Kumar",
-  "Sneha Gupta",
-  "Vikram Singh",
-  "Anjali Verma",
-  "Rajesh Nair",
-];
 
 const HRDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,49 +83,18 @@ const HRDashboard = () => {
         setIsRefreshing(true);
       }
 
-      const configured =
-        import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const apiBase = configured.replace(/\/+$/g, "");
-      const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
+      const driveParams = selectedDriveId && selectedDriveId !== "all" ? { driveId: selectedDriveId } : {};
 
-      // Build query string for drive filtering
-      const driveQuery = selectedDriveId && selectedDriveId !== "all" ? `?driveId=${selectedDriveId}` : "";
+      // Fetch candidates, quiz results, and time details in parallel
+      const [candidatesRes, quizRes, timeRes] = await Promise.allSettled([
+        candidateAPI.getAll(driveParams.driveId),
+        apiClient.get("/quizresult", driveParams),
+        apiClient.get("/user-time-details", driveParams),
+      ]);
 
-      // Fetch candidates from our backend
-      let candidatesList = [];
-      try {
-        const res = await fetch(`${base}/candidate-details${driveQuery}`);
-        if (res.ok) {
-          const json = await res.json();
-          candidatesList = json.data || [];
-        }
-      } catch (err) {
-        // silently continue
-      }
-
-      // Fetch quiz results from our backend
-      let quizList = [];
-      try {
-        const res = await fetch(`${base}/quizresult${driveQuery}`);
-        if (res.ok) {
-          const json = await res.json();
-          quizList = json.data || [];
-        }
-      } catch (err) {
-        // silently continue
-      }
-
-      // Fetch user time details from our backend
-      let timeDetailsList = [];
-      try {
-        const res = await fetch(`${base}/user-time-details${driveQuery}`);
-        if (res.ok) {
-          const json = await res.json();
-          timeDetailsList = json.data || [];
-        }
-      } catch (err) {
-        // silently continue
-      }
+      const candidatesList = candidatesRes.status === "fulfilled" ? (candidatesRes.value.data || []) : [];
+      const quizList = quizRes.status === "fulfilled" ? (quizRes.value.data || []) : [];
+      const timeDetailsList = timeRes.status === "fulfilled" ? (timeRes.value.data || []) : [];
 
       // Build lookup maps
       const quizMap = new Map();
@@ -1304,7 +1263,7 @@ const HRDashboard = () => {
                   candidates={filteredCandidates}
                   getAttendanceStatus={getAttendanceStatus}
                   getDownloadUrl={getDownloadUrl}
-                  userRole={localStorage.getItem("userRole") || "Admin"}
+                  userRole={(() => { try { const ud = JSON.parse(localStorage.getItem("userData") || "{}"); return ud.level <= 1 ? "Admin" : (ud.role || "Admin"); } catch { return "Admin"; } })()}
                   onRefresh={() => fetchCandidates(true)}
                   statusFilter={statusFilter}
                   roundFilters={roundFilters}

@@ -378,7 +378,7 @@ export default function QuizForm() {
           {!isTimeoutResult && (
             <button
               onClick={goToDashboard}
-              className="px-6 py-3 rounded-lg text-white font-bold bg-gradient-to-r from-blue-600 to-indigo-600"
+              className="px-6 py-3 rounded-lg text-white font-bold bg-linear-to-r from-blue-600 to-indigo-600"
             >
               Go to Dashboard
             </button>

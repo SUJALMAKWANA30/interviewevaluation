@@ -8,6 +8,8 @@ import {
   updateCandidateDetails,
   getMe,
 } from "../controllers/candidateDetailsController.js";
+import { authenticate, optionalAuth } from "../middlewares/auth.js";
+import { validateCandidateRegistration, validateLogin, validateObjectId } from "../middlewares/validators.js";
 
 const router = express.Router();
 
@@ -49,14 +51,16 @@ const uploadFields = upload.fields([
   { name: "lastBreakup", maxCount: 1 },
 ]);
 
-// Auth routes
-router.post("/register", uploadFields, registerCandidate);
-router.post("/login", loginCandidate);
-router.get("/me", getMe);
+// Auth routes (public)
+router.post("/register", uploadFields, validateCandidateRegistration, registerCandidate);
+router.post("/login", validateLogin, loginCandidate);
 
-// CRUD routes
-router.get("/", getAllCandidateDetails);
-router.get("/:id", getCandidateDetailsById);
-router.put("/:id", updateCandidateDetails);
+// Candidate self-service (requires candidate JWT)
+router.get("/me", authenticate, getMe);
+
+// HR routes (protected — require HR JWT)
+router.get("/", authenticate, getAllCandidateDetails);
+router.get("/:id", authenticate, validateObjectId("id"), getCandidateDetailsById);
+router.put("/:id", authenticate, validateObjectId("id"), updateCandidateDetails);
 
 export default router;

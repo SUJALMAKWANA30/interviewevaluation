@@ -95,8 +95,62 @@ export default function UserDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="min-h-screen bg-slate-100 text-left animate-pulse">
+        {/* Header Skeleton */}
+        <header className="bg-white border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div className="h-10 w-40 bg-slate-200 rounded"></div>
+            <div className="h-10 w-10 bg-slate-200 rounded-full"></div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-6 py-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* LEFT COLUMN */}
+            <div className="space-y-10">
+              {/* Profile Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-8">
+                <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 rounded-full bg-slate-200"></div>
+                  <div className="space-y-3">
+                    <div className="h-5 w-40 bg-slate-300 rounded"></div>
+                    <div className="h-4 w-56 bg-slate-200 rounded"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-8">
+                <div className="h-4 w-32 bg-slate-300 rounded mb-6"></div>
+                <div className="h-11 w-full bg-slate-200 rounded-lg"></div>
+              </div>
+
+              {/* Current Round */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-8">
+                <div className="h-4 w-28 bg-slate-300 rounded mb-4"></div>
+                <div className="h-7 w-32 bg-slate-300 rounded mb-2"></div>
+                <div className="h-4 w-40 bg-slate-200 rounded"></div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-8">
+              <div className="h-6 w-48 bg-slate-300 rounded mb-10"></div>
+
+              <div className="space-y-10">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-start gap-6">
+                    <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 bg-slate-300 rounded"></div>
+                      <div className="h-3 w-24 bg-slate-200 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -118,7 +172,7 @@ export default function UserDashboard() {
           </div>
 
           {/* RIGHT: Actions */}
-          <div className="flex items-center cursor-pointer">
+          <div className="flex items-center">
             <ProfilePopup user={user} onLogout={handleLogout} />
           </div>
         </div>
