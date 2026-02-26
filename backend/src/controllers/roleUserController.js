@@ -1,6 +1,7 @@
 import Role from "../models/Role.js";
 import User from "../models/User.js";
 import { createAuditLog } from "../middlewares/audit.js";
+import { sendUserCredentials } from "../services/notificationService.js";
 
 /**
  * Create a new role
@@ -181,13 +182,10 @@ export const deleteRole = async (req, res) => {
       });
     }
 
-    // Check if any users are assigned this role
+    // Cascade delete all users assigned to this role
     const usersWithRole = await User.countDocuments({ role: role._id });
     if (usersWithRole > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete role. ${usersWithRole} user(s) are assigned this role.`,
-      });
+      await User.deleteMany({ role: role._id });
     }
 
     await Role.findByIdAndDelete(req.params.id);
@@ -195,7 +193,7 @@ export const deleteRole = async (req, res) => {
     await req.audit("role.delete", {
       targetType: "Role",
       targetId: role._id,
-      description: `Deleted role: ${role.name}`,
+      description: `Deleted role: ${role.name} (and ${usersWithRole} associated user(s))`,
     });
 
     res.status(200).json({
@@ -237,10 +235,10 @@ export const createUser = async (req, res) => {
     }
 
     // Cannot assign a role with higher privilege than your own
-    if (req.user.level > 0 && role.level <= req.user.level) {
+    if (req.user.level > 0 && role.level < req.user.level) {
       return res.status(403).json({
         success: false,
-        message: "Cannot assign a role with equal or higher privilege than your own.",
+        message: "Cannot assign a role with higher privilege than your own.",
       });
     }
 
@@ -261,6 +259,18 @@ export const createUser = async (req, res) => {
     });
 
     await user.save();
+
+    // Send login credentials via email (plain password captured before bcrypt hash)
+    try {
+      await sendUserCredentials(
+        { name: user.name, email: user.email },
+        password,
+        role.name
+      );
+    } catch (emailErr) {
+      console.error("Failed to send credentials email:", emailErr.message);
+      // Don't fail user creation if email fails
+    }
 
     await req.audit("user.create", {
       targetType: "User",

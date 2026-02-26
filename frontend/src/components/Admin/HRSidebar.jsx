@@ -18,16 +18,17 @@ import {
 
 import { cn } from "../../utils/cn";
 import { useDrive } from "../../context/DriveContext";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const navItems = [
-  { label: "Dashboard", href: "/hr-home", icon: LayoutDashboard },
-  { label: "Drives Info", href: "/hr/drives", icon: MapPin },
-  { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users },
-  { label: "Exams", href: "/hr/exam", icon: FileText },
-  { label: "Rounds", href: "/hr/rounds", icon: GitBranch },
-  { label: "Schedule", href: "/hr/schedule", icon: Calendar },
-  { label: "Reports", href: "/hr/reports", icon: BarChart3 },
-  { label: "Admin Settings", href: "/admin-settings", icon: Settings },
+  { label: "Dashboard", href: "/hr-home", icon: LayoutDashboard, permission: null }, // always visible
+  { label: "Drives Info", href: "/hr/drives", icon: MapPin, permission: "drives" },
+  { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users, permission: "candidates" },
+  { label: "Exams", href: "/hr/exam", icon: FileText, permission: "exams" },
+  { label: "Rounds", href: "/hr/rounds", icon: GitBranch, permission: "rounds" },
+  { label: "Schedule", href: "/hr/schedule", icon: Calendar, permission: "scheduling" },
+  { label: "Reports", href: "/hr/reports", icon: BarChart3, permission: "reports" },
+  { label: "Admin Settings", href: "/admin-settings", icon: Settings, permission: "settings" },
 ];
 
 export default function HrSidebar() {
@@ -36,8 +37,19 @@ export default function HrSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { drives, selectedDriveId, setSelectedDriveId, selectedDrive } = useDrive();
   const [driveDropdownOpen, setDriveDropdownOpen] = useState(false);
+  const { can, isSuperAdmin } = usePermissions();
 
   const activeDrives = drives.filter((d) => d.isActive);
+
+  // Filter nav items based on user permissions
+  const visibleNavItems = navItems.filter((item) => {
+    // Items with no permission requirement are always visible
+    if (!item.permission) return true;
+    // Super admin sees everything
+    if (isSuperAdmin) return true;
+    // Check if user has 'view' permission on the module
+    return can(item.permission, "view");
+  });
 
   return (
     <aside
@@ -165,7 +177,7 @@ export default function HrSidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-col flex-1 px-4 py-6 space-y-1">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             pathname === item.href ||
             pathname.startsWith(item.href + "/");

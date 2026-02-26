@@ -32,11 +32,13 @@ import * as XLSX from "xlsx";
 import { CandidateTable } from "../../components/Admin/CandidateTable";
 import { useDrive } from "../../context/DriveContext";
 import { candidateAPI, adminAPI, apiClient } from "../../utils/apiClient";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
 
 const HRDashboard = () => {
+  const { can, isSuperAdmin, isAdmin } = usePermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -977,13 +979,15 @@ const HRDashboard = () => {
             </p>
           </div>
 
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50 transition shadow-sm"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
+          {can("candidates", "export") && (
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50 transition shadow-sm"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+          )}
         </div>
 
         {/* Search + Filter Row */}
@@ -1263,7 +1267,7 @@ const HRDashboard = () => {
                   candidates={filteredCandidates}
                   getAttendanceStatus={getAttendanceStatus}
                   getDownloadUrl={getDownloadUrl}
-                  userRole={(() => { try { const ud = JSON.parse(localStorage.getItem("userData") || "{}"); return ud.level <= 1 ? "Admin" : (ud.role || "Admin"); } catch { return "Admin"; } })()}
+                  userRole={can("candidates", "edit") ? "Admin" : "Viewer"}
                   onRefresh={() => fetchCandidates(true)}
                   statusFilter={statusFilter}
                   roundFilters={roundFilters}

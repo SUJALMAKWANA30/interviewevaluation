@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Search, LayoutGrid, List, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { examAPI } from "../../utils/apiClient";
+import { usePermissions } from "../../hooks/usePermissions";
 
 export default function ExamsList() {
   const navigate = useNavigate();
+  const { can } = usePermissions();
   const [viewMode, setViewMode] = useState("cards");
   const [search, setSearch] = useState("");
   const [exams, setExams] = useState([]);
@@ -176,13 +178,15 @@ export default function ExamsList() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/hr/exams/create")}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer"
-            >
-              <Plus size={16} />
-              Create Exam
-            </button>
+            {can("exams", "create") && (
+              <button
+                onClick={() => navigate("/hr/exams/create")}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 cursor-pointer"
+              >
+                <Plus size={16} />
+                Create Exam
+              </button>
+            )}
           </div>
         </div>
 
@@ -302,6 +306,7 @@ export default function ExamsList() {
                   <button
                     onClick={(e) => handleDeleteExam(e, exam._id)}
                     className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                    style={{ display: can("exams", "delete") ? "block" : "none" }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -363,12 +368,14 @@ export default function ExamsList() {
                               ? "Active ✓"
                               : "Set Active"}
                         </button>
-                        <button
-                          onClick={(e) => handleDeleteExam(e, exam._id)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {can("exams", "delete") && (
+                          <button
+                            onClick={(e) => handleDeleteExam(e, exam._id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

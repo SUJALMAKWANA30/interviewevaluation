@@ -23,15 +23,25 @@ async function getTransporter() {
   try {
     const nodemailer = await import("nodemailer");
     transporter = nodemailer.default.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,         // use STARTTLS
       auth: {
         user: emailUser,
         pass: emailPass,
       },
+      tls: {
+        rejectUnauthorized: false,  // accept self-signed certs from receiving servers
+      },
     });
+
+    // Verify SMTP connection on first use
+    await transporter.verify();
+    console.log("✅ Email transporter ready:", emailUser);
     return transporter;
-  } catch {
-    console.warn("⚠️  nodemailer not installed. Run: npm install nodemailer");
+  } catch (err) {
+    console.error("⚠️  Email setup failed:", err.message);
+    transporter = null;
     return null;
   }
 }
@@ -138,6 +148,48 @@ export async function sendRoundStatusUpdate(candidate, round, status) {
 }
 
 /**
+ * Send login credentials to a newly created HR/Admin user
+ */
+export async function sendUserCredentials(user, plainPassword, roleName) {
+  const loginUrl = process.env.FRONTEND_URL
+    ? `${process.env.FRONTEND_URL}/hr-login`
+    : "http://localhost:5173/hr-login";
+
+  const html = `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #4f46e5; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin: 0;">Welcome to Tecnoprism HR Portal</h2>
+        <p style="margin: 5px 0 0; opacity: 0.9;">Your account has been created</p>
+      </div>
+      <div style="background: #ffffff; border: 1px solid #e5e7eb; border-top: 0; padding: 24px; border-radius: 0 0 8px 8px;">
+        <p>Hello <strong>${user.name}</strong>,</p>
+        <p>An account has been created for you on the Tecnoprism Interview Evaluation platform. Below are your login credentials:</p>
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #4f46e5;">
+          <p style="margin: 4px 0;"><strong>Email:</strong> ${user.email}</p>
+          <p style="margin: 4px 0;"><strong>Password:</strong> ${plainPassword}</p>
+          <p style="margin: 4px 0;"><strong>Role:</strong> ${roleName}</p>
+        </div>
+        <p style="margin: 16px 0;">
+          <a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            Login to Dashboard
+          </a>
+        </p>
+        <p style="color: #ef4444; font-size: 13px; margin-top: 16px;">
+          ⚠️ For security, please change your password after your first login.
+        </p>
+        <p style="margin-top: 24px;">Best regards,<br/><strong>Tecnoprism HR Team</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(
+    user.email,
+    "Your Tecnoprism HR Portal Login Credentials",
+    html
+  );
+}
+
+/**
  * Core email sending function
  */
 async function sendEmail(to, subject, html) {
@@ -149,15 +201,23 @@ async function sendEmail(to, subject, html) {
   }
 
   try {
-    await mailer.sendMail({
+    const info = await mailer.sendMail({
       from: `"Tecnoprism HR" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
+      headers: {
+        "X-Priority": "1",
+        "X-Mailer": "Tecnoprism HR Portal",
+        "Reply-To": process.env.EMAIL_USER,
+      },
+      // Plain-text fallback for strict mail servers (Outlook/Exchange)
+      text: html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(),
     });
+    console.log(`✅ Email sent to ${to} | MessageId: ${info.messageId}`);
     return { success: true, sent: true };
   } catch (error) {
-    console.error(`Email send failed to ${to}:`, error.message);
+    console.error(`❌ Email send failed to ${to}:`, error.message);
     return { success: false, error: error.message };
   }
 }

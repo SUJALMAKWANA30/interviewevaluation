@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { driveAPI } from "../../utils/apiClient";
+import { usePermissions } from "../../hooks/usePermissions";
 
 export default function DriveManager() {
+  const { can } = usePermissions();
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -184,16 +186,18 @@ export default function DriveManager() {
             Create and manage walk-in interview drives across locations.
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Create Drive
-        </button>
+        {can("drives", "create") && (
+          <button
+            onClick={() => {
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Create Drive
+          </button>
+        )}
       </div>
 
       {/* Drives Grid */}
@@ -234,33 +238,39 @@ export default function DriveManager() {
                 </span>
 
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleToggleStatus(drive)}
-                    title={drive.isActive ? "Deactivate" : "Activate"}
-                    className={`rounded-lg p-2 transition-colors ${
-                      drive.isActive
-                        ? "text-green-600 hover:bg-green-50"
-                        : "text-gray-400 hover:bg-gray-100"
-                    }`}
-                  >
-                    {drive.isActive ? (
-                      <Power className="h-4 w-4" />
-                    ) : (
-                      <PowerOff className="h-4 w-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openEditModal(drive)}
-                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(drive)}
-                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {can("drives", "edit") && (
+                    <button
+                      onClick={() => handleToggleStatus(drive)}
+                      title={drive.isActive ? "Deactivate" : "Activate"}
+                      className={`rounded-lg p-2 transition-colors ${
+                        drive.isActive
+                          ? "text-green-600 hover:bg-green-50"
+                          : "text-gray-400 hover:bg-gray-100"
+                      }`}
+                    >
+                      {drive.isActive ? (
+                        <Power className="h-4 w-4" />
+                      ) : (
+                        <PowerOff className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                  {can("drives", "edit") && (
+                    <button
+                      onClick={() => openEditModal(drive)}
+                      className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  )}
+                  {can("drives", "delete") && (
+                    <button
+                      onClick={() => handleDelete(drive)}
+                      className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 

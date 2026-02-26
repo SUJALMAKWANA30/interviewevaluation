@@ -17,7 +17,8 @@ import { usePermissions } from "../../hooks/usePermissions";
 import AddUserModal from "../../components/Admin/AddUserModal";
 
 export default function AdminPanel() {
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, isAdmin, can } = usePermissions();
+  const canManageUsers = can("users", "create");
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -146,7 +147,11 @@ export default function AdminPanel() {
   };
 
   const handleDeleteRole = async (roleId, name) => {
-    if (!confirm(`Are you sure you want to delete role "${name}"?`)) return;
+    const usersInRole = users.filter((u) => u.role?._id === roleId).length;
+    const warning = usersInRole > 0
+      ? `This will also delete ${usersInRole} user(s) assigned to this role.`
+      : "";
+    if (!confirm(`Are you sure you want to delete role "${name}"?${warning ? `\n\n⚠️ ${warning}` : ""}`)) return;
     try {
       await adminAPI.deleteRole(roleId);
       toast.success("Role deleted");
@@ -545,7 +550,7 @@ export default function AdminPanel() {
                 className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-48"
               />
             </div>
-            {isSuperAdmin && (
+            {canManageUsers && (
               <button
                 onClick={() => {
                   setEditingUser(null);
@@ -569,7 +574,7 @@ export default function AdminPanel() {
                   <th className="px-6 py-3">Role</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Last Login</th>
-                  {isSuperAdmin && <th className="px-6 py-3">Actions</th>}
+                  {canManageUsers && <th className="px-6 py-3">Actions</th>}
                 </tr>
               </thead>
 
@@ -588,13 +593,13 @@ export default function AdminPanel() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() =>
-                          isSuperAdmin && handleToggleUser(user._id)
+                          canManageUsers && handleToggleUser(user._id)
                         }
                         className={`px-3 py-1 text-xs rounded-full ${
                           user.isActive
                             ? "bg-green-100 text-green-600"
                             : "bg-gray-200 text-gray-500"
-                        } ${isSuperAdmin ? "cursor-pointer hover:opacity-80" : ""}`}
+                        } ${canManageUsers ? "cursor-pointer hover:opacity-80" : ""}`}
                       >
                         {user.isActive ? "Active" : "Inactive"}
                       </button>
@@ -604,7 +609,7 @@ export default function AdminPanel() {
                         ? new Date(user.lastLogin).toLocaleString()
                         : "Never"}
                     </td>
-                    {isSuperAdmin && (
+                    {canManageUsers && (
                       <td className="px-6 py-4 flex gap-3">
                         <Edit
                           size={16}
