@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, LayoutGrid, List, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { examAPI } from "../../utils/api";
+import { examAPI } from "../../utils/apiClient";
 
 export default function ExamsList() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function ExamsList() {
   // Fetch exams from DB
   const fetchExams = async () => {
     try {
-      const res = await examAPI.getAllExams();
+      const res = await examAPI.getAll();
       if (res.success) {
         setExams(res.data || []);
       }
@@ -100,7 +100,7 @@ export default function ExamsList() {
     if (!deleteExamId) return;
 
     try {
-      const res = await examAPI.deleteExam(deleteExamId);
+      const res = await examAPI.delete(deleteExamId);
       if (res.success) {
         toast.success("Exam deleted.");
         setExams((prev) => prev.filter((ex) => ex._id !== deleteExamId));

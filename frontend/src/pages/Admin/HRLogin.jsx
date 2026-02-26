@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { LogIn, AlertCircle, Building2 } from "lucide-react";
+import { LogIn, AlertCircle, Building2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
+import { authAPI } from "../../utils/apiClient";
 
 export default function HRLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -16,44 +18,39 @@ export default function HRLogin() {
     setError("");
 
     try {
-      // Fetch roles from API
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/roles?includePassword=true`,
-      );
+      const result = await authAPI.loginHR(email, password);
 
-      if (!response.ok) {
-        throw new Error("Failed to connect to server. Please try again.");
-      }
-
-      const roles = await response.json();
-      const rolesList = roles.data || roles || [];
-
-      // Find matching user by username (email) OR Role and password
-      const matchedUser = rolesList.find(
-        (user) =>
-          (user.username?.toLowerCase() === email.toLowerCase() ||
-            user.Role?.toLowerCase() === email.toLowerCase()) &&
-          user.password === password,
-      );
-
-      if (matchedUser) {
-        // Store auth info in localStorage
-        localStorage.setItem("authToken", matchedUser._id);
+      if (result.success) {
+        // Store auth data securely
+        localStorage.setItem("authToken", result.token);
+        localStorage.setItem("refreshToken", result.refreshToken || "");
         localStorage.setItem("userType", "hr");
-        localStorage.setItem("userRole", matchedUser.Role || "HR");
-        localStorage.setItem("userName", matchedUser.username || email);
-        toast.success("Login Successful! Welcome HR.");
+        localStorage.setItem("userRole", result.user.roleSlug || "hr");
+        localStorage.setItem("userName", result.user.name || email);
+        localStorage.setItem(
+          "userData",
+          JSON.stringify({
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
+            role: result.user.roleSlug,
+            roleName: result.user.role,
+            level: result.user.level,
+            permissions: result.user.permissions || [],
+            drives: result.user.drives || [],
+          })
+        );
+
+        toast.success(`Welcome, ${result.user.name}!`);
         navigate("/hr-home");
       } else {
-        throw new Error(
-          "Invalid email or password. Please check your credentials.",
-        );
+        throw new Error(result.message || "Login failed");
       }
     } catch (err) {
-      const errorMessage = err.message || "Network error. Please try again.";
+      const errorMessage =
+        err.message || "Network error. Please try again.";
       setError(errorMessage);
       toast.error(errorMessage);
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -86,17 +83,18 @@ export default function HRLogin() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          {/* Email / Role */}
+          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-2">
-              Email or Role
+              Email
             </label>
             <input
-              type="text"
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="hr@company.com or Your Role"
+              placeholder="admin@tecnoprism.com"
               required
+              autoComplete="email"
               className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
             />
           </div>
@@ -106,23 +104,40 @@ export default function HRLogin() {
             <label className="block text-sm font-medium text-gray-800 mb-2">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              className="w-full h-11 rounded-lg border border-gray-300 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+                className="w-full h-11 rounded-lg border border-gray-300 px-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {/* Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-60"
+            className="w-full py-3 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? "Logging in..." : "Login as HR"}
+            {loading ? (
+              "Logging in..."
+            ) : (
+              <>
+                <LogIn size={18} />
+                Login
+              </>
+            )}
           </button>
         </form>
 

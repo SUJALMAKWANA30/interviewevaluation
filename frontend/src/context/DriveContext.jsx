@@ -1,11 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { driveAPI } from "../utils/apiClient";
 
 const DriveContext = createContext(null);
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const API_BASE = API_BASE_URL.endsWith("/api")
-  ? API_BASE_URL
-  : `${API_BASE_URL}/api`;
 
 export function DriveProvider({ children }) {
   const [drives, setDrives] = useState([]);
@@ -16,11 +12,10 @@ export function DriveProvider({ children }) {
 
   const fetchDrives = async () => {
     try {
-      const res = await fetch(`${API_BASE}/drives`);
-      if (res.ok) {
-        const json = await res.json();
-        setDrives(json.data || []);
-      }
+      const token = localStorage.getItem("authToken");
+      // Use authenticated API if logged in, otherwise public endpoint
+      const res = token ? await driveAPI.getAll() : await driveAPI.getActive();
+      setDrives(res.data || []);
     } catch {
       // silently fail
     } finally {

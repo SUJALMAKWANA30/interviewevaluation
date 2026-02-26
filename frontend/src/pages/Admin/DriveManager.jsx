@@ -12,11 +12,7 @@ import {
   Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const API_BASE = API_BASE_URL.endsWith("/api")
-  ? API_BASE_URL
-  : `${API_BASE_URL}/api`;
+import { driveAPI } from "../../utils/apiClient";
 
 export default function DriveManager() {
   const [drives, setDrives] = useState([]);
@@ -33,11 +29,8 @@ export default function DriveManager() {
 
   const fetchDrives = async () => {
     try {
-      const res = await fetch(`${API_BASE}/drives`);
-      if (res.ok) {
-        const json = await res.json();
-        setDrives(json.data || []);
-      }
+      const res = await driveAPI.getAll();
+      setDrives(res.data || []);
     } catch {
       toast.error("Failed to fetch drives");
     } finally {
@@ -64,23 +57,18 @@ export default function DriveManager() {
 
     setSubmitting(true);
     try {
-      const url = editingDrive
-        ? `${API_BASE}/drives/${editingDrive._id}`
-        : `${API_BASE}/drives`;
-      const method = editingDrive ? "PUT" : "POST";
+      const payload = {
+        name: formData.name.trim(),
+        location: formData.location.trim(),
+        description: formData.description.trim(),
+        date: formData.date || null,
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          location: formData.location.trim(),
-          description: formData.description.trim(),
-          date: formData.date || null,
-        }),
-      });
+      const res = editingDrive
+        ? await driveAPI.update(editingDrive._id, payload)
+        : await driveAPI.create(payload);
 
-      if (res.ok) {
+      if (res.success) {
         toast.success(
           editingDrive
             ? "Drive updated successfully"
@@ -89,11 +77,10 @@ export default function DriveManager() {
         resetForm();
         fetchDrives();
       } else {
-        const json = await res.json();
-        toast.error(json.message || "Failed to save drive");
+        toast.error(res.message || "Failed to save drive");
       }
-    } catch {
-      toast.error("Network error");
+    } catch (err) {
+      toast.error(err.message || "Network error");
     } finally {
       setSubmitting(false);
     }
@@ -101,16 +88,11 @@ export default function DriveManager() {
 
   const handleToggleStatus = async (drive) => {
     try {
-      const res = await fetch(`${API_BASE}/drives/${drive._id}/toggle-status`, {
-        method: "PATCH",
-      });
-      if (res.ok) {
-        const json = await res.json();
-        toast.success(
-          json.data.isActive ? "Drive activated" : "Drive deactivated",
-        );
-        fetchDrives();
-      }
+      const res = await driveAPI.toggleStatus(drive._id);
+      toast.success(
+        res.data.isActive ? "Drive activated" : "Drive deactivated",
+      );
+      fetchDrives();
     } catch {
       toast.error("Failed to toggle drive status");
     }
@@ -120,13 +102,9 @@ export default function DriveManager() {
     if (!confirm(`Are you sure you want to delete "${drive.name}"?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/drives/${drive._id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Drive deleted");
-        fetchDrives();
-      }
+      await driveAPI.delete(drive._id);
+      toast.success("Drive deleted");
+      fetchDrives();
     } catch {
       toast.error("Failed to delete drive");
     }

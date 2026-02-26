@@ -26,8 +26,8 @@ export function CandidateTable({
   sortDirection = "desc",
   entriesPerPage = 10,
 }) {
-  // Role-based access control - Admin sees everything
-  const isAdmin = userRole === "Admin";
+  // Role-based access control - Admin sees everything (support old "Admin" and new slug/level based roles)
+  const isAdmin = userRole === "Admin" || userRole === "super-admin" || userRole === "admin";
 
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [modalCandidate, setModalCandidate] = useState(null);

@@ -23,6 +23,7 @@ import {
 } from "recharts";
 
 import { useDrive } from "../../context/DriveContext";
+import { candidateAPI, examAPI, apiClient } from "../../utils/apiClient";
 
 export default function HrDashboard() {
   const [candidates, setCandidates] = useState([]);
@@ -34,34 +35,26 @@ export default function HrDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const configured =
-        import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const apiBase = configured.replace(/\/+$/g, "");
-      const base = apiBase.endsWith("/api") ? apiBase : `${apiBase}/api`;
-
-      const driveQuery =
+      const driveParams =
         selectedDriveId && selectedDriveId !== "all"
-          ? `?driveId=${selectedDriveId}`
-          : "";
+          ? { driveId: selectedDriveId }
+          : {};
 
       try {
         const [candRes, quizRes, examRes] = await Promise.allSettled([
-          fetch(`${base}/candidate-details${driveQuery}`),
-          fetch(`${base}/quizresult${driveQuery}`),
-          fetch(`${base}/exams`),
+          candidateAPI.getAll(driveParams.driveId),
+          apiClient.get("/quizresult", driveParams),
+          examAPI.getAll(),
         ]);
 
-        if (candRes.status === "fulfilled" && candRes.value.ok) {
-          const json = await candRes.value.json();
-          setCandidates(json.data || []);
+        if (candRes.status === "fulfilled") {
+          setCandidates(candRes.value.data || []);
         }
-        if (quizRes.status === "fulfilled" && quizRes.value.ok) {
-          const json = await quizRes.value.json();
-          setQuizResults(json.data || []);
+        if (quizRes.status === "fulfilled") {
+          setQuizResults(quizRes.value.data || []);
         }
-        if (examRes.status === "fulfilled" && examRes.value.ok) {
-          const json = await examRes.value.json();
-          setExams(json.data || []);
+        if (examRes.status === "fulfilled") {
+          setExams(examRes.value.data || []);
         }
       } catch {
         // silently continue with empty data

@@ -21,6 +21,7 @@ import HRLayout from "./layout/HRLayout";
 
 // Admin
 import AdminPanel from "./pages/Admin/AdminPanel";
+import SchedulePage from "./pages/Admin/SchedulePage";
 
 // Utility Components
 import LocationGate from "./components/Admin/LocationGate";
@@ -98,66 +99,92 @@ function App() {
         <Route
           path="/hr-home"
           element={
-            <HRLayout>
-              <HRHome />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <HRHome />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/hr/candidate-dashboard"
           element={
-            <HRLayout>
-              <HRDashboard />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <HRDashboard />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/hr/exam"
           element={
-            <HRLayout>
-              <ExamList />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <ExamList />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/hr/exams/create"
           element={
-            <HRLayout>
-              <ExamBuilder />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <ExamBuilder />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/hr/rounds"
           element={
-            <HRLayout>
-              <Round />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <Round />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/hr/drives"
           element={
-            <HRLayout>
-              <DriveManager />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <DriveManager />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/admin-settings"
           element={
-            <HRLayout>
-              <AdminPanel />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <AdminPanel />
+              </HRLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hr/schedule"
+          element={
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <SchedulePage />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
         
         <Route
           path="/hr/exams/:id/builder"
           element={
-            <HRLayout>
-              <ExamBuilder />
-            </HRLayout>
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <ExamBuilder />
+              </HRLayout>
+            </ProtectedRoute>
           }
         />
 

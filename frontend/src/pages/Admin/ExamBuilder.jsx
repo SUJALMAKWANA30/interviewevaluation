@@ -9,7 +9,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { examAPI } from "../../utils/api";
+import { examAPI } from "../../utils/apiClient";
 
 const defaultQuestion = () => ({
   id: Math.random().toString(36).substring(2, 9),
@@ -49,7 +49,7 @@ export default function ExamBuilder() {
     if (examId) {
       setLoading(true);
       examAPI
-        .getExamById(examId)
+        .getById(examId)
         .then((res) => {
           if (res.success && res.data) {
             const d = res.data;
@@ -105,9 +105,9 @@ export default function ExamBuilder() {
 
       let res;
       if (examId) {
-        res = await examAPI.updateExam(examId, payload);
+        res = await examAPI.update(examId, payload);
       } else {
-        res = await examAPI.createExam(payload);
+        res = await examAPI.create(payload);
       }
 
       if (res.success) {
