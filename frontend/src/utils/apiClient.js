@@ -96,7 +96,7 @@ class ApiClient {
     localStorage.removeItem("userType");
     localStorage.removeItem("userData");
     localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
+    localStorage.removeItem("selectedDriveId");
 
     // Redirect based on current path
     const isHRPage = window.location.pathname.startsWith("/hr") || 

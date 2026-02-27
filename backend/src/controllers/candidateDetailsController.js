@@ -79,21 +79,26 @@ export const registerCandidate = async (req, res) => {
           }
         }
       } catch (e) {
-      // Failed to parse documentUrls
-    }
+        console.error("[Register] Failed to parse documentUrls:", e.message);
+      }
     }
 
-    // Try to upload files to Google Drive, but don't block registration if it fails
+    // Upload files to Google Drive
+    const uploadErrors = [];
     try {
-      if (req.files) {
+      const fileKeys = Object.keys(req.files || {});
+      if (fileKeys.length > 0) {
         const uploadFile = async (file, folder, linkKey) => {
           try {
             const result = await uploadFileToDrive(file, folder);
-            if (result && result.directLink) {
-              documentLinks[linkKey] = result.directLink;
+            if (result && result.fileId) {
+              // Store fileId directly — frontend constructs thumbnail URLs from it
+              documentLinks[linkKey] = result.fileId;
+            } else {
+              uploadErrors.push(`${linkKey}: upload returned null (Drive API may not be configured)`);
             }
           } catch (err) {
-            // upload failed, continue without this document
+            uploadErrors.push(`${linkKey}: ${err.message}`);
           }
         };
 
@@ -118,7 +123,11 @@ export const registerCandidate = async (req, res) => {
         await Promise.allSettled(uploadPromises);
       }
     } catch (uploadError) {
-      // File upload process failed, continuing without documents
+      console.error("[Register] File upload process error:", uploadError.message);
+    }
+
+    if (uploadErrors.length > 0) {
+      console.error("[Register] Document upload issues:", uploadErrors);
     }
 
     // Parse skills if it's a string
@@ -357,21 +366,15 @@ export const getMe = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     const decoded = jwt.verify(token, JWT_SECRET);
-    const candidate = await CandidateDetails.findById(decoded.id).select("-password");
+    const candidate = await CandidateDetails.findById(decoded.id)
+      .select("-password")
+      .populate("driveId");
     if (!candidate) {
       return res.status(404).json({ success: false, message: "Candidate not found" });
     }
     res.status(200).json({
       success: true,
-      data: {
-        id: candidate._id,
-        firstName: candidate.firstName,
-        lastName: candidate.lastName,
-        email: candidate.email,
-        phone: candidate.phone,
-        uniqueId: candidate.uniqueId,
-        driveId: candidate.driveId || null,
-      },
+      data: candidate,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch current user", error: error.message });

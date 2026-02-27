@@ -26,7 +26,6 @@ export default function HRLogin() {
         localStorage.setItem("refreshToken", result.refreshToken || "");
         localStorage.setItem("userType", "hr");
         localStorage.setItem("userRole", result.user.roleSlug || "hr");
-        localStorage.setItem("userName", result.user.name || email);
         localStorage.setItem(
           "userData",
           JSON.stringify({

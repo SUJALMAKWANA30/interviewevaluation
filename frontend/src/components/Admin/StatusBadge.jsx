@@ -84,39 +84,101 @@ export function StatusBadge({ status, isAttendance = false }) {
 }
 
 // Round Stepper Component for Status Column
-export function RoundStepper({ candidate }) {
+// Accepts optional `driveRounds` prop: array of { name, type, order }
+// Falls back to hardcoded R1-R4 if not provided (backward-compatible)
+export function RoundStepper({ candidate, driveRounds }) {
   const [hoveredStep, setHoveredStep] = React.useState(null);
-  
-  // Get R1 score (MCQ Final Score)
-  const r1Score = candidate.quiz?.['Final Score'] || candidate.score || null;
-  const r1ScoreNum = r1Score !== null ? parseInt(r1Score) : null;
-  const r1IsDropped = r1ScoreNum !== null && r1ScoreNum < 13; // Marks less than 13 means dropped
-  const r1IsPassed = r1ScoreNum !== null && r1ScoreNum >= 13;
-  
-  // Get R2 data (Technical Round) - from database status field
-  const r2Data = candidate.quiz?.R2 || candidate.quiz?.r2;
-  const r2Rating = Array.isArray(r2Data) && r2Data[0] ? r2Data[0].rating : (r2Data?.rating || null);
-  const r2Status = Array.isArray(r2Data) && r2Data[0] ? (r2Data[0].status || '').toLowerCase().trim() : ((r2Data?.status || '').toLowerCase().trim());
-  const r2Interviewer = Array.isArray(r2Data) && r2Data[0] ? r2Data[0].interviewer : (r2Data?.interviewer || null);
-  
-  // Get R3 data (Managerial Round - GO/NO GO/HOLD) - uses 'Managerial status' field
-  const r3Data = candidate.quiz?.R3 || candidate.quiz?.r3;
-  const r3Rating = Array.isArray(r3Data) && r3Data[0] 
-    ? (r3Data[0]['Managerial status'] || r3Data[0]['managerial status'] || r3Data[0].rating) 
-    : (r3Data?.['Managerial status'] || r3Data?.rating || null);
-  const r3Status = Array.isArray(r3Data) && r3Data[0] ? (r3Data[0].status || '').toLowerCase().trim() : ((r3Data?.status || '').toLowerCase().trim());
-  const r3Interviewer = Array.isArray(r3Data) && r3Data[0] ? r3Data[0].interviewer : (r3Data?.interviewer || null);
-  
-  // Get R4 data (HR Round)
-  const r4Data = candidate.quiz?.R4 || candidate.quiz?.r4;
-  const r4Rating = Array.isArray(r4Data) && r4Data[0] ? r4Data[0].rating : (r4Data?.rating || null);
-  const r4Status = Array.isArray(r4Data) && r4Data[0] ? (r4Data[0].status || '').toLowerCase().trim() : ((r4Data?.status || '').toLowerCase().trim());
-  const r4Interviewer = Array.isArray(r4Data) && r4Data[0] ? r4Data[0].interviewer : (r4Data?.interviewer || null);
+
+  // Default rounds if none provided by drive
+  const defaultRounds = [
+    { name: "R1", type: "Exam", order: 1 },
+    { name: "R2", type: "Interview", order: 2 },
+    { name: "R3", type: "Interview", order: 3 },
+    { name: "R4", type: "Interview", order: 4 },
+  ];
+
+  const activeRounds = (driveRounds && driveRounds.length > 0)
+    ? [...driveRounds].sort((a, b) => a.order - b.order)
+    : defaultRounds;
+
+  // Helper to extract round data from candidate for any round name
+  const getRoundData = (roundName) => {
+    const upperName = roundName.toUpperCase();
+
+    // R1 is special — comes from Final Score / MCQ
+    if (upperName === "R1") {
+      const score = candidate.quiz?.["Final Score"] || candidate.score || null;
+      const scoreNum = score !== null ? parseInt(score) : null;
+      const isDropped = scoreNum !== null && scoreNum < 13;
+      const isPassed = scoreNum !== null && scoreNum >= 13;
+      return {
+        data: score,
+        roundStatus: isDropped ? "drop" : isPassed ? "completed" : "",
+        interviewer: null,
+        isDropped,
+        isRejected: false,
+        managerialStatus: null,
+      };
+    }
+
+    // For any other round (R2, R3, R4, R5, etc.) — data lives in candidate.quiz[roundName]
+    const quizData = candidate.quiz?.[upperName] || candidate.quiz?.[roundName];
+    const entry = Array.isArray(quizData) && quizData[0] ? quizData[0] : (quizData && typeof quizData === "object" ? quizData : null);
+
+    if (!entry) {
+      return { data: null, roundStatus: "", interviewer: null, isDropped: false, isRejected: false, managerialStatus: null };
+    }
+
+    const status = normalizeStatus(entry.status);
+    const interviewer = entry.interviewer || null;
+
+    // R3 has special managerial status field
+    const managerialRating = entry["Managerial status"] || entry["managerial status"] || null;
+    const rating = managerialRating || entry.rating || null;
+
+    return {
+      data: rating,
+      roundStatus: status,
+      interviewer,
+      isDropped: status === "drop",
+      isRejected: status === "rejected",
+      managerialStatus: managerialRating ? managerialRating.toUpperCase() : null,
+    };
+  };
+
+  // Normalize status for comparison
+  const normalizeStatus = (status) => {
+    if (!status) return '';
+    const s = status.toLowerCase().trim();
+    if (s === 'drop' || s === 'dropped') return 'drop';
+    if (s === 'rejected' || s === 'reject') return 'rejected';
+    if (s === 'in progress' || s === 'in-progress' || s === 'inprogress') return 'in progress';
+    if (s === 'completed' || s === 'complete') return 'completed';
+    return s;
+  };
+
+  // Build steps from active rounds
+  const steps = activeRounds.map((round) => {
+    const rd = getRoundData(round.name);
+    const upperName = round.name.toUpperCase();
+
+    // Determine label: R3 shows G/H for GO/HOLD, others show round name
+    let label = round.name;
+    if (rd.managerialStatus === "GO") label = "G";
+    else if (rd.managerialStatus === "HOLD") label = "H";
+
+    return {
+      id: upperName,
+      label,
+      type: round.type,
+      ...rd,
+    };
+  });
   
   const getTooltipContent = (step) => {
     let lines = [];
     
-    if (step.id === 'R1') {
+    if (step.type === 'Exam' || step.id === 'R1') {
       if (step.data) {
         lines.push(`Score: ${step.data}/30`);
         if (step.isDropped) {
@@ -127,10 +189,9 @@ export function RoundStepper({ candidate }) {
       } else {
         lines.push('Not attempted');
       }
-    } else if (step.id === 'R3') {
+    } else if (step.managerialStatus) {
       if (step.data) lines.push(`Decision: ${step.data}`);
       if (step.interviewer) lines.push(`Interviewer: ${step.interviewer}`);
-      // Show the round status (in progress, completed, drop)
       if (step.roundStatus) {
         const displayStatus = step.roundStatus.charAt(0).toUpperCase() + step.roundStatus.slice(1);
         lines.push(`Round Status: ${displayStatus}`);
@@ -145,57 +206,6 @@ export function RoundStepper({ candidate }) {
     
     return lines;
   };
-  
-  // Normalize status for comparison
-  const normalizeStatus = (status) => {
-    if (!status) return '';
-    const s = status.toLowerCase().trim();
-    if (s === 'drop' || s === 'dropped') return 'drop';
-    if (s === 'rejected' || s === 'reject') return 'rejected';
-    if (s === 'in progress' || s === 'in-progress' || s === 'inprogress') return 'in progress';
-    if (s === 'completed' || s === 'complete') return 'completed';
-    return s;
-  };
-  
-  const steps = [
-    { 
-      id: 'R1', 
-      label: 'R1', 
-      data: r1Score, 
-      roundStatus: r1IsDropped ? 'drop' : (r1IsPassed ? 'completed' : ''),
-      interviewer: null,
-      isDropped: r1IsDropped
-    },
-    { 
-      id: 'R2', 
-      label: 'R2', 
-      data: r2Rating, 
-      roundStatus: normalizeStatus(r2Status),
-      interviewer: r2Interviewer,
-      isDropped: normalizeStatus(r2Status) === 'drop',
-      isRejected: normalizeStatus(r2Status) === 'rejected'
-    },
-    { 
-      id: 'R3', 
-      // Show G for GO, H for HOLD, otherwise R3
-      label: (r3Rating || '').toUpperCase() === 'GO' ? 'G' : (r3Rating || '').toUpperCase() === 'HOLD' ? 'H' : 'R3', 
-      data: r3Rating, 
-      roundStatus: normalizeStatus(r3Status),
-      interviewer: r3Interviewer,
-      isDropped: normalizeStatus(r3Status) === 'drop',
-      isRejected: normalizeStatus(r3Status) === 'rejected',
-      managerialStatus: (r3Rating || '').toUpperCase() // GO or HOLD
-    },
-    { 
-      id: 'R4', 
-      label: 'R4', 
-      data: r4Rating, 
-      roundStatus: normalizeStatus(r4Status),
-      interviewer: r4Interviewer,
-      isDropped: normalizeStatus(r4Status) === 'drop',
-      isRejected: normalizeStatus(r4Status) === 'rejected'
-    },
-  ];
   
   // Color logic based ONLY on status field from database
   const getStepColor = (step) => {

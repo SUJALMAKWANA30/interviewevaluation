@@ -22,11 +22,12 @@ export default function HRLayout({ children }) {
     .slice(0, 2);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("userData");
     localStorage.removeItem("authToken");
     localStorage.removeItem("userType");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("selectedDriveId");
     navigate("/hr-login", { replace: true });
   };
 

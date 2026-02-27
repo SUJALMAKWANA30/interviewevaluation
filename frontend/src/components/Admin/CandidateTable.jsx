@@ -25,6 +25,7 @@ export function CandidateTable({
   sortField = "newest",
   sortDirection = "desc",
   entriesPerPage = 10,
+  driveRounds = null, // Array of { name, type, order } from the selected drive
 }) {
   // Role-based access control - Admin sees everything (support old "Admin" and new slug/level based roles)
   const isAdmin = userRole === "Admin" || userRole === "super-admin" || userRole === "admin";
@@ -820,7 +821,7 @@ export function CandidateTable({
                     </td>
                     {/* Round Status Stepper */}
                     <td style={{ padding: "16px" }}>
-                      <RoundStepper candidate={candidate} />
+                      <RoundStepper candidate={candidate} driveRounds={driveRounds} />
                     </td>
 
                     {/* Actions Column - Co-Admin only */}

@@ -1,7 +1,8 @@
 /**
  * Notification Service
  * Email notifications for interview scheduling and status updates.
- * Uses nodemailer — configure EMAIL_USER and EMAIL_APP_PASSWORD in .env
+ * Uses nodemailer with Gmail SMTP.
+ * Configure EMAIL_USER and EMAIL_APP_PASSWORD in .env
  * 
  * If nodemailer is not installed or email is not configured, 
  * notifications will be logged but not sent.
@@ -22,27 +23,51 @@ async function getTransporter() {
 
   try {
     const nodemailer = await import("nodemailer");
+
+    // Gmail SMTP — port 465 SSL
     transporter = nodemailer.default.createTransport({
       host: "smtp.gmail.com",
-      port: 587,
-      secure: false,         // use STARTTLS
+      port: 465,
+      secure: true,
       auth: {
         user: emailUser,
         pass: emailPass,
       },
-      tls: {
-        rejectUnauthorized: false,  // accept self-signed certs from receiving servers
-      },
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 50,
+      connectionTimeout: 30000,
+      socketTimeout: 30000,
+      greetingTimeout: 30000,
     });
 
-    // Verify SMTP connection on first use
     await transporter.verify();
-    console.log("✅ Email transporter ready:", emailUser);
+    console.log("✅ Email transporter ready (Gmail SMTP):", emailUser);
     return transporter;
   } catch (err) {
-    console.error("⚠️  Email setup failed:", err.message);
-    transporter = null;
-    return null;
+    console.warn("⚠️  Port 465 failed, trying port 587 STARTTLS...", err.message);
+    try {
+      const nodemailer = await import("nodemailer");
+      transporter = nodemailer.default.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+      await transporter.verify();
+      console.log("✅ Email transporter ready (Gmail STARTTLS):", emailUser);
+      return transporter;
+    } catch (err2) {
+      console.error("⚠️  Email setup failed on both ports:", err2.message);
+      transporter = null;
+      return null;
+    }
   }
 }
 
@@ -190,7 +215,7 @@ export async function sendUserCredentials(user, plainPassword, roleName) {
 }
 
 /**
- * Core email sending function
+ * Core email sending function with retry and Outlook-friendly headers
  */
 async function sendEmail(to, subject, html) {
   const mailer = await getTransporter();
@@ -200,24 +225,56 @@ async function sendEmail(to, subject, html) {
     return { success: true, logged: true };
   }
 
-  try {
-    const info = await mailer.sendMail({
-      from: `"Tecnoprism HR" <${process.env.EMAIL_USER}>`,
+  const emailUser = process.env.EMAIL_USER;
+  const plainText = html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+
+  // Generate a proper Message-ID for better deliverability
+  const messageId = `<${Date.now()}.${Math.random().toString(36).slice(2)}@tecnoprism.com>`;
+
+  const mailOptions = {
+    from: {
+      name: "Tecnoprism HR Portal",
+      address: emailUser,
+    },
+    to,
+    subject,
+    html,
+    text: plainText,
+    messageId,
+    // Envelope sender for proper bounce handling
+    envelope: {
+      from: emailUser,
       to,
-      subject,
-      html,
-      headers: {
-        "X-Priority": "1",
-        "X-Mailer": "Tecnoprism HR Portal",
-        "Reply-To": process.env.EMAIL_USER,
-      },
-      // Plain-text fallback for strict mail servers (Outlook/Exchange)
-      text: html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(),
-    });
-    console.log(`✅ Email sent to ${to} | MessageId: ${info.messageId}`);
-    return { success: true, sent: true };
-  } catch (error) {
-    console.error(`❌ Email send failed to ${to}:`, error.message);
-    return { success: false, error: error.message };
+    },
+    headers: {
+      "X-Priority": "3",          // Normal priority (1=high can trigger spam filters)
+      "X-Mailer": "Tecnoprism HR Portal",
+      "Reply-To": emailUser,
+      "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply",
+      "Precedence": "bulk",
+      "List-Unsubscribe": `<mailto:${emailUser}?subject=unsubscribe>`,
+    },
+  };
+
+  // Attempt to send with retry (helps with transient Outlook/Exchange issues)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const info = await mailer.sendMail(mailOptions);
+      console.log(`✅ Email sent to ${to} | MessageId: ${info.messageId} | Response: ${info.response}`);
+      return { success: true, sent: true, messageId: info.messageId };
+    } catch (error) {
+      console.error(`❌ Email attempt ${attempt} failed to ${to}:`, error.message);
+      if (attempt === 2) {
+        // Reset transporter on final failure so it reconnects next time
+        transporter = null;
+        return { success: false, error: error.message };
+      }
+      // Wait 2s before retry
+      await new Promise((r) => setTimeout(r, 2000));
+      // Reset transporter and try fresh connection
+      transporter = null;
+      const freshMailer = await getTransporter();
+      if (!freshMailer) return { success: false, error: "Transporter unavailable on retry" };
+    }
   }
 }

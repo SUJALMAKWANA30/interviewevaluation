@@ -435,13 +435,18 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
 
   const getDownloadUrl = (url) => {
     if (!url) return '#';
-    if (url.includes('drive.google.com')) {
-      const match = url.match(/\/file\/d\/([^/]+)/);
-      if (match) {
-        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    // If it's already a full URL
+    if (/^https?:\/\//i.test(url)) {
+      if (url.includes('drive.google.com')) {
+        const match = url.match(/(?:\/file\/d\/|id=)([a-zA-Z0-9_-]+)/);
+        if (match) {
+          return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        }
       }
+      return url;
     }
-    return url;
+    // Raw Google Drive file ID
+    return `https://drive.google.com/file/d/${url}/view`;
   };
 
   return (

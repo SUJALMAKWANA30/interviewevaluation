@@ -44,11 +44,6 @@ export default function UserLogin() {
       // Store auth token and user type
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('userType', 'user');
-      // Cleanup other localStorage keys if present
-      localStorage.removeItem('userData');
-      localStorage.removeItem('examStartTime');
-      localStorage.removeItem('examDuration');
-      localStorage.removeItem('examInProgress');
 
       toast.success('Login Successful! You may start your exam now.', {
         duration: 3000,

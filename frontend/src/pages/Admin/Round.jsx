@@ -74,7 +74,7 @@ export default function HiringPipeline() {
   };
 
   const handleSave = () => {
-    console.log("Saving pipeline:", rounds);
+    // Save pipeline rounds
   };
 
   return (
