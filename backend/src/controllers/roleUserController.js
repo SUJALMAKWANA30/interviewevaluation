@@ -531,19 +531,24 @@ export const getPermissionModules = async (req, res) => {
       actions: ["view", "create", "edit", "delete"],
     },
     {
-      module: "rounds",
-      label: "Rounds",
+      module: "round_r2",
+      label: "Round R2 (Technical)",
+      actions: ["view", "edit"],
+    },
+    {
+      module: "round_r3",
+      label: "Round R3 (Managerial)",
+      actions: ["view", "edit"],
+    },
+    {
+      module: "round_r4",
+      label: "Round R4 (HR)",
       actions: ["view", "edit"],
     },
     {
       module: "reports",
       label: "Reports",
       actions: ["view", "export"],
-    },
-    {
-      module: "scheduling",
-      label: "Scheduling",
-      actions: ["view", "create", "edit", "delete", "assign"],
     },
     {
       module: "users",

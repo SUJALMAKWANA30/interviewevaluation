@@ -71,7 +71,8 @@ export const startExam = async (req, res) => {
         lastName: candidate.lastName,
         passwordHash: candidate.password,
         photo,
-        startTime: now
+        startTime: now,
+        driveId: candidate.driveId || null,
       },
       { upsert: true, new: true }
     );
@@ -95,7 +96,7 @@ export const endExam = async (req, res) => {
     const record = await UserTimeDetails.findOneAndUpdate(
       { email },
       {
-        $set: { endTime: now, passwordHash: candidate.password, photo },
+        $set: { endTime: now, passwordHash: candidate.password, photo, driveId: candidate.driveId || null },
         $setOnInsert: {
           email,
           phone: candidate.phone,
@@ -148,7 +149,7 @@ export const completeExam = async (req, res) => {
     const record = await UserTimeDetails.findOneAndUpdate(
       { email },
       {
-        $set: { completionTime: completionSeconds, passwordHash: candidate.password, photo },
+        $set: { completionTime: completionSeconds, passwordHash: candidate.password, photo, driveId: candidate.driveId || null },
         $setOnInsert: {
           email,
           phone: candidate.phone,

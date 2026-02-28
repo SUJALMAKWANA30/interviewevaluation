@@ -32,8 +32,12 @@ class ApiClient {
       headers: { ...this.getHeaders(options.isFormData), ...options.headers },
     });
 
-    // Handle 401 — try refresh token
-    if (response.status === 401) {
+    // Skip token-refresh logic for auth endpoints (login, refresh-token)
+    // — their 401 means "wrong credentials", not "expired session"
+    const isAuthEndpoint = endpoint.startsWith("/auth/login") || endpoint.startsWith("/auth/refresh");
+
+    // Handle 401 — try refresh token (only for non-auth endpoints)
+    if (response.status === 401 && !isAuthEndpoint) {
       const refreshed = await this.tryRefreshToken();
       if (refreshed) {
         // Retry the original request with new token

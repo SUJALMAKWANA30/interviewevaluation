@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   FileText,
-  GitBranch,
   BarChart3,
   Settings,
   Zap,
@@ -13,7 +12,6 @@ import {
   LogOut,
   MapPin,
   ChevronDown,
-  Calendar,
 } from "lucide-react";
 
 import { cn } from "../../utils/cn";
@@ -25,8 +23,6 @@ const navItems = [
   { label: "Drives Info", href: "/hr/drives", icon: MapPin, permission: "drives" },
   { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users, permission: "candidates" },
   { label: "Exams", href: "/hr/exam", icon: FileText, permission: "exams" },
-  { label: "Rounds", href: "/hr/rounds", icon: GitBranch, permission: "rounds" },
-  { label: "Schedule", href: "/hr/schedule", icon: Calendar, permission: "scheduling" },
   { label: "Reports", href: "/hr/reports", icon: BarChart3, permission: "reports" },
   { label: "Admin Settings", href: "/admin-settings", icon: Settings, permission: "settings" },
 ];

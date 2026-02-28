@@ -18,6 +18,8 @@ import {
 } from "../../utils/quizUtils";
 import { quizResultAPI, userTimeDetailsAPI, candidateMeAPI, eventAPI, examAPI } from "../../utils/api";
 
+const MAX_TAB_VIOLATIONS = 3;
+
 export default function QuizForm() {
   const [stage, setStage] = useState(QUIZ_STAGES.QUIZ);
   const [currentSection, setCurrentSection] = useState(0);
@@ -33,6 +35,70 @@ export default function QuizForm() {
   const autoRedirectTimerRef = useRef(null);
   const navigate = useNavigate();
   const finishQuizRef = useRef(null);
+  const tabViolationCount = useRef(0);
+  const [tabWarningVisible, setTabWarningVisible] = useState(false);
+
+  // ─── Anti-cheat: block copy/cut/paste, right-click, keyboard shortcuts, tab switching ───
+  useEffect(() => {
+    const blockCopyCutPaste = (e) => {
+      e.preventDefault();
+      toast.error("Copy/Paste is disabled during the exam.");
+    };
+
+    const blockContextMenu = (e) => {
+      e.preventDefault();
+    };
+
+    const blockKeyboard = (e) => {
+      // Block Ctrl/Cmd + C, V, X, U, S, A, P and F12, PrintScreen
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        ["c", "v", "x", "u", "s", "a", "p"].includes(e.key.toLowerCase())
+      ) {
+        e.preventDefault();
+        toast.error("Keyboard shortcuts are disabled during the exam.");
+        return;
+      }
+      if (e.key === "F12" || e.key === "PrintScreen") {
+        e.preventDefault();
+        toast.error("Developer tools are disabled during the exam.");
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabViolationCount.current += 1;
+        const remaining = MAX_TAB_VIOLATIONS - tabViolationCount.current;
+        if (remaining <= 0) {
+          toast.error("Too many tab switches! Your exam is being auto-submitted.");
+          if (finishQuizRef.current) {
+            finishQuizRef.current();
+          }
+        } else {
+          setTabWarningVisible(true);
+          toast.error(
+            `Warning: Tab switch detected! ${remaining} warning${remaining > 1 ? "s" : ""} left before auto-submit.`
+          );
+        }
+      }
+    };
+
+    document.addEventListener("copy", blockCopyCutPaste);
+    document.addEventListener("cut", blockCopyCutPaste);
+    document.addEventListener("paste", blockCopyCutPaste);
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockKeyboard);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("copy", blockCopyCutPaste);
+      document.removeEventListener("cut", blockCopyCutPaste);
+      document.removeEventListener("paste", blockCopyCutPaste);
+      document.removeEventListener("contextmenu", blockContextMenu);
+      document.removeEventListener("keydown", blockKeyboard);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   // Fetch active exam from DB
   useEffect(() => {
@@ -48,13 +114,12 @@ export default function QuizForm() {
             icon: "",
             color: "",
             description: "",
-            questions: (section.questions || []).map((q) => ({
-              id: q._id,
+            questions: (section.questions || []).map((q, qIdx) => ({
+              id: q._id || `s${sIdx}-q${qIdx}`,
               question: q.question,
               image: null,
               options: q.options,
-              // Convert index-based correctAnswer to the actual option text
-              correctAnswer: q.options[q.correctAnswer] || q.options[0],
+              correctAnswer: q.correctAnswer ?? 0,
             })),
           }));
           setQuizSections(sections);
@@ -180,8 +245,8 @@ export default function QuizForm() {
     finishQuizRef.current = finishQuiz;
   }, [finishQuiz]);
 
-  const handleOptionSelect = (option, questionId) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
+  const handleOptionSelect = (optionIndex, questionId) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
   };
 
   const handleNextSection = () => {
@@ -231,7 +296,11 @@ export default function QuizForm() {
   if (stage === QUIZ_STAGES.QUIZ) {
     const section = quizSections[currentSection];
    return (
-  <div className="min-h-screen bg-gray-100 px-4 sm:px-6 lg:px-8 flex flex-col items-center py-10 transition-all duration-500 ease-in-out">
+  <div
+    className="min-h-screen bg-gray-100 px-4 sm:px-6 lg:px-8 flex flex-col items-center py-10 transition-all duration-500 ease-in-out"
+    style={{ userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none", msUserSelect: "none" }}
+    onDragStart={(e) => e.preventDefault()}
+  >
     <div className="w-full max-w-5xl">
 
       {/* Header */}
@@ -273,44 +342,45 @@ export default function QuizForm() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {question.options.map((option, index) => (
-                <label
-                  key={index}
-                  className={`flex items-center p-4 rounded-lg cursor-pointer border transition-all duration-200 ease-in-out transform active:scale-95 ${
-                    answers[question.id] === option
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 bg-white hover:bg-gray-50 hover:shadow-sm"
-                  }`}
-                  onClick={() => handleOptionSelect(option, question.id)}
-                >
-                  <input
-                    type="radio"
-                    name={`question-${question.id}`}
-                    value={option}
-                    checked={answers[question.id] === option}
-                    onChange={() =>
-                      handleOptionSelect(option, question.id)
-                    }
-                    className="hidden"
-                  />
-
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-200 ${
-                      answers[question.id] === option
-                        ? "border-blue-600"
-                        : "border-gray-400"
+              {question.options.map((option, index) => {
+                const isSelected = answers[question.id] === index;
+                return (
+                  <label
+                    key={index}
+                    className={`flex items-center p-4 rounded-lg cursor-pointer border transition-all duration-200 ease-in-out transform active:scale-95 ${
+                      isSelected
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 bg-white hover:bg-gray-50 hover:shadow-sm"
                     }`}
+                    onClick={(e) => { e.preventDefault(); handleOptionSelect(index, question.id); }}
                   >
-                    {answers[question.id] === option && (
-                      <div className="w-2.5 h-2.5 bg-blue-600 rounded-full transition-all duration-200 scale-100" />
-                    )}
-                  </div>
+                    <input
+                      type="radio"
+                      name={`question-${question.id}`}
+                      value={index}
+                      checked={isSelected}
+                      readOnly
+                      className="hidden"
+                    />
 
-                  <span className="text-gray-700 font-medium">
-                    {option}
-                  </span>
-                </label>
-              ))}
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center transition-all duration-200 ${
+                        isSelected
+                          ? "border-blue-600"
+                          : "border-gray-400"
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="w-2.5 h-2.5 bg-blue-600 rounded-full transition-all duration-200 scale-100" />
+                      )}
+                    </div>
+
+                    <span className="text-gray-700 font-medium">
+                      {option}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -346,6 +416,49 @@ export default function QuizForm() {
         </button>
       </div>
     </div>
+    {/* Tab-switch warning overlay */}
+    {tabWarningVisible && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "460px",
+            background: "white",
+            borderRadius: "16px",
+            padding: "24px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "12px" }}>⚠️</div>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#dc2626", marginBottom: "8px" }}>
+            Tab Switch Detected!
+          </h2>
+          <p style={{ color: "#374151", marginBottom: "6px" }}>
+            You switched away from the exam tab. This is not allowed.
+          </p>
+          <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "16px" }}>
+            Warnings remaining: <strong>{Math.max(0, MAX_TAB_VIOLATIONS - tabViolationCount.current)}</strong>
+          </p>
+          <button
+            onClick={() => setTabWarningVisible(false)}
+            className="px-6 py-3 rounded-lg text-white font-bold bg-red-600 hover:bg-red-700 transition-colors"
+          >
+            Return to Exam
+          </button>
+        </div>
+      </div>
+    )}
     {showResultModal && (
       <div
         style={{

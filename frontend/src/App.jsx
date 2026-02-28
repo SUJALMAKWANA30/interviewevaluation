@@ -15,13 +15,11 @@ import HRDashboard from "./pages/Admin/HRDashboard";
 import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
-import Round from "./pages/Admin/Round";
 import DriveManager from "./pages/Admin/DriveManager";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
 import AdminPanel from "./pages/Admin/AdminPanel";
-import SchedulePage from "./pages/Admin/SchedulePage";
 
 // Utility Components
 import LocationGate from "./components/Admin/LocationGate";
@@ -165,18 +163,6 @@ function App() {
           }
         />
         <Route
-          path="/hr/rounds"
-          element={
-            <ProtectedRoute requiredUserType="hr">
-              <HRLayout>
-                <PermissionRoute module="rounds">
-                  <Round />
-                </PermissionRoute>
-              </HRLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/hr/drives"
           element={
             <ProtectedRoute requiredUserType="hr">
@@ -200,19 +186,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/hr/schedule"
-          element={
-            <ProtectedRoute requiredUserType="hr">
-              <HRLayout>
-                <PermissionRoute module="scheduling">
-                  <SchedulePage />
-                </PermissionRoute>
-              </HRLayout>
-            </ProtectedRoute>
-          }
-        />
-        
         <Route
           path="/hr/exams/:id/builder"
           element={
