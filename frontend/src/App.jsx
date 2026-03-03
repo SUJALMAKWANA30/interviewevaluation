@@ -15,16 +15,36 @@ import HRDashboard from "./pages/Admin/HRDashboard";
 import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
-import Round from "./pages/Admin/Round";
 import DriveManager from "./pages/Admin/DriveManager";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
 import AdminPanel from "./pages/Admin/AdminPanel";
-import SchedulePage from "./pages/Admin/SchedulePage";
 
 // Utility Components
 import LocationGate from "./components/Admin/LocationGate";
+
+// Permission-protected route — redirects to /hr-home if user lacks permission
+function PermissionRoute({ children, module, action = "view" }) {
+  const userData = (() => {
+    try { return JSON.parse(localStorage.getItem("userData")) || {}; } catch { return {}; }
+  })();
+  const level = userData.level ?? 99;
+  const permissions = userData.permissions || [];
+
+  // Super admin bypasses all checks
+  if (level === 0) return children;
+
+  const hasPermission = permissions.some(
+    (p) => p.module === module && p.actions?.includes(action)
+  );
+
+  if (!hasPermission) {
+    return <Navigate to="/hr-home" replace />;
+  }
+
+  return children;
+}
 
 // Redirect Component to preserve query params
 function RedirectWithParams({ to }) {
@@ -111,7 +131,9 @@ function App() {
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <HRDashboard />
+                <PermissionRoute module="candidates">
+                  <HRDashboard />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }
@@ -121,7 +143,9 @@ function App() {
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <ExamList />
+                <PermissionRoute module="exams">
+                  <ExamList />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }
@@ -131,17 +155,9 @@ function App() {
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <ExamBuilder />
-              </HRLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/hr/rounds"
-          element={
-            <ProtectedRoute requiredUserType="hr">
-              <HRLayout>
-                <Round />
+                <PermissionRoute module="exams" action="create">
+                  <ExamBuilder />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }
@@ -151,7 +167,9 @@ function App() {
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <DriveManager />
+                <PermissionRoute module="drives">
+                  <DriveManager />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }
@@ -161,28 +179,21 @@ function App() {
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <AdminPanel />
+                <PermissionRoute module="settings">
+                  <AdminPanel />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/hr/schedule"
-          element={
-            <ProtectedRoute requiredUserType="hr">
-              <HRLayout>
-                <SchedulePage />
-              </HRLayout>
-            </ProtectedRoute>
-          }
-        />
-        
         <Route
           path="/hr/exams/:id/builder"
           element={
             <ProtectedRoute requiredUserType="hr">
               <HRLayout>
-                <ExamBuilder />
+                <PermissionRoute module="exams" action="edit">
+                  <ExamBuilder />
+                </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>
           }

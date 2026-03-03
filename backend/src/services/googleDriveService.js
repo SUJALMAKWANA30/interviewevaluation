@@ -128,6 +128,7 @@ export const uploadFileToDrive = async (file, folderName = "candidate-documents"
       directLink: `https://drive.google.com/open?id=${fileData.data.id}`,
     };
   } catch (error) {
+    console.error(`[GoogleDrive] Upload failed for "${file.originalname}":`, error.message || error);
     return null;
   }
 };

@@ -32,11 +32,13 @@ import * as XLSX from "xlsx";
 import { CandidateTable } from "../../components/Admin/CandidateTable";
 import { useDrive } from "../../context/DriveContext";
 import { candidateAPI, adminAPI, apiClient } from "../../utils/apiClient";
+import { usePermissions } from "../../hooks/usePermissions";
 
 // Auto-refresh interval in milliseconds (30 seconds)
 const AUTO_REFRESH_INTERVAL = 30000;
 
 const HRDashboard = () => {
+  const { can, isSuperAdmin, isAdmin } = usePermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -661,50 +663,45 @@ const HRDashboard = () => {
   };
 
   // Calculate stats
-  // Count candidates who have completed ALL rounds (R1, R2, R3, R4 status = completed)
+  // Count candidates who have completed ALL rounds based on drive configuration
+  const driveRoundNames = selectedDrive?.rounds?.length > 0
+    ? selectedDrive.rounds.sort((a, b) => a.order - b.order).map(r => r.name.toUpperCase())
+    : ['R1', 'R2', 'R3', 'R4'];
+
   const getAllRoundsCompletedCount = () => {
     return candidates.filter((c) => {
-      // Check if R1 is completed (has a score)
-      const r1Completed =
-        c.quiz?.["Final Score"] && parseInt(c.quiz["Final Score"]) > 0;
-
-      // Check R2, R3, R4 status
-      const r2Status = c.quiz?.R2?.[0]?.status?.toLowerCase();
-      const r3Status = c.quiz?.R3?.[0]?.status?.toLowerCase();
-      const r4Status = c.quiz?.R4?.[0]?.status?.toLowerCase();
-
-      return (
-        r1Completed &&
-        r2Status === "completed" &&
-        r3Status === "completed" &&
-        r4Status === "completed"
-      );
+      return driveRoundNames.every((roundName) => {
+        if (roundName === 'R1') {
+          return c.quiz?.["Final Score"] && parseInt(c.quiz["Final Score"]) > 0;
+        }
+        const status = c.quiz?.[roundName]?.[0]?.status?.toLowerCase();
+        return status === "completed";
+      });
     }).length;
   };
 
   // Count candidates with any round marked as 'drop'
   const getDroppedCount = () => {
     return candidates.filter((c) => {
-      const r2Status = c.quiz?.R2?.[0]?.status?.toLowerCase();
-      const r3Status = c.quiz?.R3?.[0]?.status?.toLowerCase();
-      const r4Status = c.quiz?.R4?.[0]?.status?.toLowerCase();
-
-      return r2Status === "drop" || r3Status === "drop" || r4Status === "drop";
+      return driveRoundNames.some((roundName) => {
+        if (roundName === 'R1') {
+          const score = parseInt(c.quiz?.["Final Score"]) || 0;
+          return score > 0 && score < 13;
+        }
+        const status = c.quiz?.[roundName]?.[0]?.status?.toLowerCase();
+        return status === "drop";
+      });
     }).length;
   };
 
   // Count candidates with any round marked as 'rejected'
   const getRejectedCount = () => {
     return candidates.filter((c) => {
-      const r2Status = c.quiz?.R2?.[0]?.status?.toLowerCase();
-      const r3Status = c.quiz?.R3?.[0]?.status?.toLowerCase();
-      const r4Status = c.quiz?.R4?.[0]?.status?.toLowerCase();
-
-      return (
-        r2Status === "rejected" ||
-        r3Status === "rejected" ||
-        r4Status === "rejected"
-      );
+      return driveRoundNames.some((roundName) => {
+        if (roundName === 'R1') return false;
+        const status = c.quiz?.[roundName]?.[0]?.status?.toLowerCase();
+        return status === "rejected";
+      });
     }).length;
   };
 
@@ -937,11 +934,16 @@ const HRDashboard = () => {
 
   const getDownloadUrl = (url) => {
     if (!url) return "";
-    if (url.includes("drive.google.com/open?id=")) {
-      const fileId = url.split("id=")[1];
-      return `https://drive.google.com/file/d/${fileId}/view`;
+    // Already a full URL
+    if (/^https?:\/\//i.test(url)) {
+      if (url.includes("drive.google.com")) {
+        const match = url.match(/(?:\/file\/d\/|[?&]id=)([a-zA-Z0-9_-]+)/);
+        if (match) return `https://drive.google.com/file/d/${match[1]}/view`;
+      }
+      return url;
     }
-    return url;
+    // Raw Google Drive file ID
+    return `https://drive.google.com/file/d/${url}/view`;
   };
 
   const SkeletonTable = () => {
@@ -977,13 +979,15 @@ const HRDashboard = () => {
             </p>
           </div>
 
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50 transition shadow-sm"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
+          {can("candidates", "export") && (
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50 transition shadow-sm"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+          )}
         </div>
 
         {/* Search + Filter Row */}
@@ -1073,7 +1077,10 @@ const HRDashboard = () => {
                     Select Rounds
                   </h3>
                   <div className="space-y-3">
-                    {['R1', 'R2', 'R3', 'R4'].map((round) => (
+                    {(selectedDrive?.rounds?.length > 0
+                      ? selectedDrive.rounds.sort((a, b) => a.order - b.order).map(r => r.name)
+                      : ['R1', 'R2', 'R3', 'R4']
+                    ).map((round) => (
                       <div key={round}>
                         <div
                           className="flex items-center gap-3 cursor-pointer group"
@@ -1263,7 +1270,7 @@ const HRDashboard = () => {
                   candidates={filteredCandidates}
                   getAttendanceStatus={getAttendanceStatus}
                   getDownloadUrl={getDownloadUrl}
-                  userRole={(() => { try { const ud = JSON.parse(localStorage.getItem("userData") || "{}"); return ud.level <= 1 ? "Admin" : (ud.role || "Admin"); } catch { return "Admin"; } })()}
+                  userRole={can("candidates", "edit") ? "Admin" : "Viewer"}
                   onRefresh={() => fetchCandidates(true)}
                   statusFilter={statusFilter}
                   roundFilters={roundFilters}
@@ -1272,6 +1279,7 @@ const HRDashboard = () => {
                   sortField={sortField}
                   sortDirection={sortDirection}
                   entriesPerPage={entriesPerPage}
+                  driveRounds={selectedDrive?.rounds || null}
                 />
               )}
             </div>

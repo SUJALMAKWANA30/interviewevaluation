@@ -3,7 +3,7 @@ import Drive from "../models/Drive.js";
 // Create a new drive
 export const createDrive = async (req, res) => {
   try {
-    const { name, location, description, date } = req.body;
+    const { name, location, description, date, rounds } = req.body;
 
     if (!name || !location) {
       return res.status(400).json({
@@ -12,13 +12,24 @@ export const createDrive = async (req, res) => {
       });
     }
 
-    const drive = new Drive({
+    const driveData = {
       name,
       location,
       description: description || "",
       date: date || null,
       isActive: true,
-    });
+    };
+
+    // If rounds are provided, validate and add them
+    if (Array.isArray(rounds) && rounds.length > 0) {
+      driveData.rounds = rounds.map((r, i) => ({
+        name: r.name || `R${i + 1}`,
+        type: r.type || "Interview",
+        order: r.order ?? i + 1,
+      }));
+    }
+
+    const drive = new Drive(driveData);
 
     await drive.save();
 
@@ -100,11 +111,22 @@ export const getDriveById = async (req, res) => {
 // Update a drive
 export const updateDrive = async (req, res) => {
   try {
-    const { name, location, description, date } = req.body;
+    const { name, location, description, date, rounds } = req.body;
+
+    const updateData = { name, location, description, date };
+
+    // If rounds are provided, validate and update them
+    if (Array.isArray(rounds)) {
+      updateData.rounds = rounds.map((r, i) => ({
+        name: r.name || `R${i + 1}`,
+        type: r.type || "Interview",
+        order: r.order ?? i + 1,
+      }));
+    }
 
     const drive = await Drive.findByIdAndUpdate(
       req.params.id,
-      { name, location, description, date },
+      updateData,
       { new: true, runValidators: true }
     );
 

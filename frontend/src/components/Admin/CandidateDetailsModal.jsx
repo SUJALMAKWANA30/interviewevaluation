@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Save, Loader2, MessageSquare, FileText, Image, CreditCard, Receipt, ExternalLink, Check } from 'lucide-react';
+import { X, Edit2, Save, Loader2, MessageSquare, FileText, Image, CreditCard, Receipt, ExternalLink, Check, Lock } from 'lucide-react';
 import { CandidatePhoto, getGoogleDriveImageUrl } from './CandidatePhoto';
+import { usePermissions } from '../../hooks/usePermissions';
 
-const SECTION_CONFIG = [
-  { key: 'logical', label: 'Logical', apiField: 'Logical' },
-  { key: 'database', label: 'Database', apiField: 'Database' },
-  { key: 'communication', label: 'Communication', apiField: 'Communication' },
-  { key: 'rpa', label: 'RPA', apiField: 'RPA' },
-  { key: 'genAi', label: 'GEN AI', apiField: 'GenAI' },
-  { key: 'python', label: 'Python', apiField: 'Python' },
-];
+// SECTION_CONFIG removed — R1 sections are now dynamic from sectionWiseMarks
 
 const INTERVIEWER_NAMES = [
   'Rahul Sharma',
@@ -23,6 +17,14 @@ const INTERVIEWER_NAMES = [
 
 export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Admin', onRefresh }) {
   const isAdmin = userRole === 'Admin';
+  const { can, isSuperAdmin, user: loggedInUser } = usePermissions();
+
+  // Round-wise edit permissions: super admin and level-0 can edit all
+  const canEditR2 = isSuperAdmin || can('round_r2', 'edit');
+  const canEditR3 = isSuperAdmin || can('round_r3', 'edit');
+  const canEditR4 = isSuperAdmin || can('round_r4', 'edit');
+  const loggedInUserName = loggedInUser?.name || '';
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -94,12 +96,20 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
           interviewer: roundKey === 'r4' ? interviewerName : r4Interviewer || '',
           status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
         }],
-        Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
-        GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
-        Python: String(candidate.quiz?.Python || editedMarks.python || ''),
-        RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
-        Database: String(candidate.quiz?.Database || editedMarks.database || ''),
-        Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
+        // Dynamically include section-wise marks
+        ...(candidate.quiz?.sectionWiseMarks
+          ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
+              acc[s.sectionName] = String(s.marks || 0);
+              return acc;
+            }, {})
+          : {
+              Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
+              GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
+              Python: String(candidate.quiz?.Python || editedMarks.python || ''),
+              RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
+              Database: String(candidate.quiz?.Database || editedMarks.database || ''),
+              Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
+            }),
         'Final Score': String(candidate.quiz?.['Final Score'] || ''),
       };
 
@@ -182,8 +192,12 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
           if (quizData.R2 && Array.isArray(quizData.R2) && quizData.R2[0]) {
             setR2Rating(parseInt(quizData.R2[0].rating) || 0);
             setComments(prev => ({ ...prev, r2: quizData.R2[0].comments || '' }));
-            setR2Interviewer(quizData.R2[0].interviewer || '');
+            const r2IntFromApi = quizData.R2[0].interviewer || '';
+            setR2Interviewer(r2IntFromApi || (canEditR2 && loggedInUserName ? loggedInUserName : ''));
             setR2RoundStatus(quizData.R2[0].status || '');
+          } else if (canEditR2 && loggedInUserName) {
+            // No R2 data yet — pre-fill with logged-in user's name
+            setR2Interviewer(loggedInUserName);
           }
           
           // Set R3 data
@@ -193,8 +207,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
             const r3RatingValue = r3ManagerialStatus.toUpperCase().trim();
             setR3Status(r3RatingValue);
             setComments(prev => ({ ...prev, r3: quizData.R3[0].comments || '' }));
-            setR3Interviewer(quizData.R3[0].interviewer || '');
+            const r3IntFromApi = quizData.R3[0].interviewer || '';
+            setR3Interviewer(r3IntFromApi || (canEditR3 && loggedInUserName ? loggedInUserName : ''));
             setR3RoundStatus(quizData.R3[0].status || '');
+          } else if (canEditR3 && loggedInUserName) {
+            setR3Interviewer(loggedInUserName);
           }
           
           // Set R4 data
@@ -202,8 +219,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
             setR4Rating(parseInt(quizData.R4[0].rating) || 0);
             setR4Status(quizData.R4[0].rating || '');
             setComments(prev => ({ ...prev, r4: quizData.R4[0].comments || '' }));
-            setR4Interviewer(quizData.R4[0].interviewer || '');
+            const r4IntFromApi = quizData.R4[0].interviewer || '';
+            setR4Interviewer(r4IntFromApi || (canEditR4 && loggedInUserName ? loggedInUserName : ''));
             setR4RoundStatus(quizData.R4[0].status || '');
+          } else if (canEditR4 && loggedInUserName) {
+            setR4Interviewer(loggedInUserName);
           }
         }
       }
@@ -366,12 +386,20 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
           interviewer: r4Interviewer || '',
           status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
         }],
-        Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
-        GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
-        Python: String(candidate.quiz?.Python || editedMarks.python || ''),
-        RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
-        Database: String(candidate.quiz?.Database || editedMarks.database || ''),
-        Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
+        // Dynamically include section-wise marks from quiz result
+        ...(candidate.quiz?.sectionWiseMarks
+          ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
+              acc[s.sectionName] = String(s.marks || 0);
+              return acc;
+            }, {})
+          : {
+              Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
+              GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
+              Python: String(candidate.quiz?.Python || editedMarks.python || ''),
+              RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
+              Database: String(candidate.quiz?.Database || editedMarks.database || ''),
+              Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
+            }),
         'Final Score': String(candidate.quiz?.['Final Score'] || displayTotal || ''),
       };
 
@@ -404,44 +432,38 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
     }
   };
 
-  const currentMarks = isEditing ? editedMarks : (candidate.round1Marks || {
-    logical: parseInt(candidate.quiz?.Logical || candidate.quiz?.logical) || 0,
-    database: parseInt(candidate.quiz?.Database || candidate.quiz?.database) || 0,
-    communication: parseInt(candidate.quiz?.Communication || candidate.quiz?.communication) || 0,
-    rpa: parseInt(candidate.quiz?.RPA || candidate.quiz?.rpa) || 0,
-    genAi: parseInt(candidate.quiz?.GenAI || candidate.quiz?.genAi || candidate.quiz?.genai) || 0,
-    python: parseInt(candidate.quiz?.Python || candidate.quiz?.python) || 0,
-  });
+  // Dynamic R1 section scores from sectionWiseMarks
+  const sectionWiseMarks = candidate.quiz?.sectionWiseMarks || [];
 
-  // Use Final Score from API if available, otherwise calculate from individual marks
+  const dynamicTotalScore = sectionWiseMarks.reduce((sum, s) => sum + (Number(s.marks) || 0), 0);
+  const dynamicMaxScore = sectionWiseMarks.reduce((sum, s) => sum + (Number(s.totalQuestions) || 0), 0);
+
+  // Fallback: use Final Score from quiz-segregate API or calculated total
   const apiFinalScore = parseInt(
-    candidate.quiz?.['Final Score'] || 
-    candidate.quiz?.['final score'] || 
-    candidate.quiz?.finalScore || 
-    candidate.quiz?.FinalScore || 
+    candidate.quiz?.['Final Score'] ||
+    candidate.quiz?.['final score'] ||
+    candidate.quiz?.finalScore ||
+    candidate.quiz?.FinalScore ||
     0
   );
-  
-  const calculatedTotal =
-    (Number(currentMarks.logical) || 0) +
-    (Number(currentMarks.database) || 0) +
-    (Number(currentMarks.communication) || 0) +
-    (Number(currentMarks.rpa) || 0) +
-    (Number(currentMarks.genAi) || 0) +
-    (Number(currentMarks.python) || 0);
-  
-  // Prefer API Final Score over calculated total
-  const displayTotal = apiFinalScore > 0 ? apiFinalScore : calculatedTotal;
+
+  const displayTotal = dynamicTotalScore > 0 ? dynamicTotalScore : apiFinalScore;
+  const displayMaxScore = dynamicMaxScore > 0 ? dynamicMaxScore : 30;
 
   const getDownloadUrl = (url) => {
     if (!url) return '#';
-    if (url.includes('drive.google.com')) {
-      const match = url.match(/\/file\/d\/([^/]+)/);
-      if (match) {
-        return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    // If it's already a full URL
+    if (/^https?:\/\//i.test(url)) {
+      if (url.includes('drive.google.com')) {
+        const match = url.match(/(?:\/file\/d\/|id=)([a-zA-Z0-9_-]+)/);
+        if (match) {
+          return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        }
       }
+      return url;
     }
-    return url;
+    // Raw Google Drive file ID
+    return `https://drive.google.com/file/d/${url}/view`;
   };
 
   return (
@@ -607,56 +629,67 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
               </h4>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              {SECTION_CONFIG.map((section) => (
-                <div key={section.key} style={{
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '16px',
-                  padding: '20px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: '80px',
-                    height: '80px',
-                    background: '#eef2ff',
-                    borderRadius: '50%',
-                    marginRight: '-40px',
-                    marginTop: '-40px',
-                  }} />
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                      {section.label}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '32px', fontWeight: '900', color: '#111827' }}>
-                        {currentMarks[section.key] ?? 0}
-                      </span>
-                      <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '600', marginBottom: '-8px' }}>/ 5</span>
-                    </div>
-                    <div style={{
-                      marginTop: '12px',
-                      height: '6px',
-                      background: '#e5e7eb',
-                      borderRadius: '9999px',
+            {sectionWiseMarks.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(sectionWiseMarks.length, 3)}, 1fr)`, gap: '16px' }}>
+                {sectionWiseMarks.map((section, idx) => {
+                  const marks = Number(section.marks) || 0;
+                  const total = Number(section.totalQuestions) || 0;
+                  const pct = total > 0 ? (marks / total) * 100 : 0;
+                  return (
+                    <div key={section.sectionName || idx} style={{
+                      background: '#f9fafb',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '16px',
+                      padding: '20px',
+                      position: 'relative',
                       overflow: 'hidden',
                     }}>
                       <div style={{
-                        height: '100%',
-                        background: 'linear-gradient(90deg, #667eea, #764ba2)',
-                        borderRadius: '9999px',
-                        width: `${((currentMarks[section.key] ?? 0) / 5) * 100}%`,
-                        transition: 'width 0.5s ease',
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: '80px',
+                        height: '80px',
+                        background: '#eef2ff',
+                        borderRadius: '50%',
+                        marginRight: '-40px',
+                        marginTop: '-40px',
                       }} />
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                          {section.sectionName}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '32px', fontWeight: '900', color: '#111827' }}>
+                            {marks}
+                          </span>
+                          <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '600', marginBottom: '-8px' }}>/ {total}</span>
+                        </div>
+                        <div style={{
+                          marginTop: '12px',
+                          height: '6px',
+                          background: '#e5e7eb',
+                          borderRadius: '9999px',
+                          overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            height: '100%',
+                            background: 'linear-gradient(90deg, #667eea, #764ba2)',
+                            borderRadius: '9999px',
+                            width: `${pct}%`,
+                            transition: 'width 0.5s ease',
+                          }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', background: '#f9fafb', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
+                No section-wise score data available for this candidate.
+              </div>
+            )}
 
             {/* Final Score */}
             <div style={{
@@ -673,12 +706,12 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                     <span style={{ fontSize: '48px', fontWeight: '900', color: '#111827', lineHeight: 1 }}>{displayTotal}</span>
-                    <span style={{ fontSize: '20px', color: '#6b7280', fontWeight: '600', marginBottom: '8px' }}>/ 30</span>
+                    <span style={{ fontSize: '20px', color: '#6b7280', fontWeight: '600', marginBottom: '8px' }}>/ {displayMaxScore}</span>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '36px', fontWeight: '900', color: '#667eea' }}>
-                    {Math.round((displayTotal / 30) * 100)}%
+                    {displayMaxScore > 0 ? Math.round((displayTotal / displayMaxScore) * 100) : 0}%
                   </div>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                     Performance
@@ -697,7 +730,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   height: '100%',
                   background: 'linear-gradient(90deg, #667eea, #8b5cf6, #667eea)',
                   borderRadius: '9999px',
-                  width: `${(displayTotal / 30) * 100}%`,
+                  width: `${displayMaxScore > 0 ? (displayTotal / displayMaxScore) * 100 : 0}%`,
                   transition: 'width 1s ease',
                 }} />
               </div>
@@ -751,9 +784,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     {r2RoundStatus === 'rejected' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#ea580c' }}>(Rejected)</span>}
                     {r2RoundStatus === 'completed' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669' }}>✓ Completed</span>}
                     {r2RoundStatus === 'in progress' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#2563eb' }}>● In Progress</span>}
+                    {!canEditR2 && <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: '600', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Lock size={10} /> Read Only</span>}
                   </h5>
                 </div>
-                <div style={{ position: 'relative' }} title="Selecting an interviewer will automatically set status to 'In Progress' and save to database">
+                <div style={{ position: 'relative' }} title={canEditR2 ? "Selecting an interviewer will automatically set status to 'In Progress' and save to database" : "You don't have permission to edit R2"}>
                   <select
                     value={r2Interviewer}
                     onChange={(e) => {
@@ -773,7 +807,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                         autoSaveInterviewer('r2', newInterviewer, newStatus);
                       }
                     }}
-                    disabled={interviewerSaving.r2}
+                    disabled={!canEditR2 || interviewerSaving.r2}
                     style={{
                       padding: '8px 16px',
                       border: interviewerError.r2 ? '2px solid #dc2626' : '1px solid #e5e7eb',
@@ -789,7 +823,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     }}
                   >
                     <option value="">Select Interviewer</option>
-                    {interviewerNames.map((name) => (
+                    {(loggedInUserName && !interviewerNames.includes(loggedInUserName)
+                      ? [loggedInUserName, ...interviewerNames]
+                      : interviewerNames
+                    ).map((name) => (
                       <option key={name} value={name}>{name}</option>
                     ))}
                   </select>
@@ -853,7 +890,8 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     <button
                       key={num}
                       type="button"
-                      onClick={() => setR2Rating(num)}
+                      onClick={() => canEditR2 && setR2Rating(num)}
+                      disabled={!canEditR2}
                       style={{
                         width: '40px',
                         height: '40px',
@@ -865,8 +903,9 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                         color: r2Rating === num ? 'white' : '#374151',
                         fontWeight: '700',
                         fontSize: '14px',
-                        cursor: 'pointer',
+                        cursor: canEditR2 ? 'pointer' : 'not-allowed',
                         transition: 'all 0.2s',
+                        opacity: !canEditR2 ? 0.6 : 1,
                       }}
                     >
                       {num}
@@ -876,9 +915,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
               </div>
               
               <textarea
-                placeholder="Enter technical round feedback and notes..."
+                placeholder={canEditR2 ? "Enter technical round feedback and notes..." : "No edit permission for this round"}
                 value={comments.r2}
-                onChange={(e) => setComments(prev => ({ ...prev, r2: e.target.value }))}
+                onChange={(e) => canEditR2 && setComments(prev => ({ ...prev, r2: e.target.value }))}
+                readOnly={!canEditR2}
                 style={{
                   width: '100%',
                   minHeight: '100px',
@@ -889,8 +929,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   fontSize: '14px',
                   outline: 'none',
                   fontFamily: 'inherit',
+                  background: !canEditR2 ? '#f9fafb' : 'white',
+                  cursor: !canEditR2 ? 'not-allowed' : 'text',
                 }}
               />
+              {canEditR2 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
                 <button
                   onClick={() => handleSaveRound('r2', true)}
@@ -963,6 +1006,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   {roundSaveStatus.r2 ? '✓ Saved' : 'Save R2'}
                 </button>
               </div>
+              )}
             </div>
 
             {/* HR Round - R3 */}
@@ -996,10 +1040,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     {r3RoundStatus === 'drop' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#dc2626' }}>(Dropped)</span>}
                     {r3RoundStatus === 'completed' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669' }}>✓ Completed</span>}
                     {r3RoundStatus === 'in progress' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#2563eb' }}>● In Progress</span>}
+                    {!canEditR3 && <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: '600', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Lock size={10} /> Read Only</span>}
                   </h5>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ position: 'relative' }} title="Selecting an interviewer will automatically set status to 'In Progress' and save to database">
+                  <div style={{ position: 'relative' }} title={canEditR3 ? "Selecting an interviewer will automatically set status to 'In Progress' and save to database" : "You don't have permission to edit R3"}>
                     <select
                       value={r3Interviewer}
                       onChange={(e) => {
@@ -1019,7 +1064,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                           autoSaveInterviewer('r3', newInterviewer, newStatus);
                         }
                       }}
-                      disabled={interviewerSaving.r3}
+                      disabled={!canEditR3 || interviewerSaving.r3}
                       style={{
                         padding: '8px 16px',
                         border: interviewerError.r3 ? '2px solid #dc2626' : '1px solid #e5e7eb',
@@ -1035,7 +1080,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                       }}
                     >
                       <option value="">Select Interviewer</option>
-                      {interviewerNames.map((name) => (
+                      {(loggedInUserName && !interviewerNames.includes(loggedInUserName)
+                        ? [loggedInUserName, ...interviewerNames]
+                        : interviewerNames
+                      ).map((name) => (
                         <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
@@ -1075,14 +1123,15 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   </div>
                   <select
                     value={r3Status}
-                    onChange={(e) => setR3Status(e.target.value.toUpperCase())}
+                    onChange={(e) => canEditR3 && setR3Status(e.target.value.toUpperCase())}
+                    disabled={!canEditR3}
                     style={{
                       padding: '8px 16px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      cursor: 'pointer',
+                      cursor: canEditR3 ? 'pointer' : 'not-allowed',
                       outline: 'none',
                       background: (r3Status || '').toUpperCase() === 'GO' ? '#d1fae5' : (r3Status || '').toUpperCase() === 'HOLD' ? '#fef3c7' : 'white',
                       color: (r3Status || '').toUpperCase() === 'GO' ? '#065f46' : (r3Status || '').toUpperCase() === 'HOLD' ? '#92400e' : '#374151',
@@ -1095,9 +1144,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                 </div>
               </div>
               <textarea
-                placeholder="Enter HR round feedback and notes..."
+                placeholder={canEditR3 ? "Enter HR round feedback and notes..." : "No edit permission for this round"}
                 value={comments.r3}
-                onChange={(e) => setComments(prev => ({ ...prev, r3: e.target.value }))}
+                onChange={(e) => canEditR3 && setComments(prev => ({ ...prev, r3: e.target.value }))}
+                readOnly={!canEditR3}
                 style={{
                   width: '100%',
                   minHeight: '100px',
@@ -1108,8 +1158,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   fontSize: '14px',
                   outline: 'none',
                   fontFamily: 'inherit',
+                  background: !canEditR3 ? '#f9fafb' : 'white',
+                  cursor: !canEditR3 ? 'not-allowed' : 'text',
                 }}
               />
+              {canEditR3 && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
                 <button
                   onClick={() => handleSaveRound('r3', true)}
@@ -1182,6 +1235,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   {roundSaveStatus.r3 ? '✓ Saved' : 'Save R3'}
                 </button>
               </div>
+              )}
             </div>
 
             {/* Final Round - R4 */}
@@ -1215,10 +1269,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     {r4RoundStatus === 'rejected' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#ea580c' }}>(Rejected)</span>}
                     {r4RoundStatus === 'completed' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#059669' }}>✓ Completed</span>}
                     {r4RoundStatus === 'in progress' && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#2563eb' }}>● In Progress</span>}
+                    {!canEditR4 && <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: '600', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Lock size={10} /> Read Only</span>}
                   </h5>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ position: 'relative' }} title="Selecting an interviewer will automatically set status to 'In Progress' and save to database">
+                  <div style={{ position: 'relative' }} title={canEditR4 ? "Selecting an interviewer will automatically set status to 'In Progress' and save to database" : "You don't have permission to edit R4"}>
                     <select
                       value={r4Interviewer}
                       onChange={(e) => {
@@ -1238,7 +1293,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                           autoSaveInterviewer('r4', newInterviewer, newStatus);
                         }
                       }}
-                      disabled={interviewerSaving.r4}
+                      disabled={!canEditR4 || interviewerSaving.r4}
                       style={{
                         padding: '8px 16px',
                         border: interviewerError.r4 ? '2px solid #dc2626' : '1px solid #e5e7eb',
@@ -1254,7 +1309,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                       }}
                     >
                       <option value="">Select Interviewer</option>
-                      {interviewerNames.map((name) => (
+                      {(loggedInUserName && !interviewerNames.includes(loggedInUserName)
+                        ? [loggedInUserName, ...interviewerNames]
+                        : interviewerNames
+                      ).map((name) => (
                         <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
@@ -1319,7 +1377,8 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                     <button
                       key={num}
                       type="button"
-                      onClick={() => setR4Rating(num)}
+                      onClick={() => canEditR4 && setR4Rating(num)}
+                      disabled={!canEditR4}
                       style={{
                         width: '40px',
                         height: '40px',
@@ -1331,8 +1390,9 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                         color: r4Rating === num ? 'white' : '#374151',
                         fontWeight: '700',
                         fontSize: '14px',
-                        cursor: 'pointer',
+                        cursor: canEditR4 ? 'pointer' : 'not-allowed',
                         transition: 'all 0.2s',
+                        opacity: !canEditR4 ? 0.6 : 1,
                       }}
                     >
                       {num}
@@ -1342,9 +1402,10 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
               </div>
               
               <textarea
-                placeholder="Enter final round feedback and notes..."
+                placeholder={canEditR4 ? "Enter final round feedback and notes..." : "View only – no edit permission"}
                 value={comments.r4}
-                onChange={(e) => setComments(prev => ({ ...prev, r4: e.target.value }))}
+                readOnly={!canEditR4}
+                onChange={(e) => canEditR4 && setComments(prev => ({ ...prev, r4: e.target.value }))}
                 style={{
                   width: '100%',
                   minHeight: '100px',
@@ -1355,9 +1416,11 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   fontSize: '14px',
                   outline: 'none',
                   fontFamily: 'inherit',
+                  background: !canEditR4 ? '#f3f4f6' : 'white',
+                  cursor: !canEditR4 ? 'not-allowed' : 'text',
                 }}
               />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+              {canEditR4 && (<div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
                 <button
                   onClick={() => handleSaveRound('r4', true)}
                   disabled={roundSaveLoading.r4 || r4RoundStatus === 'drop'}
@@ -1428,7 +1491,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
                   )}
                   {roundSaveStatus.r4 ? '✓ Saved' : 'Save R4'}
                 </button>
-              </div>
+              </div>)}
             </div>
           </div>
 

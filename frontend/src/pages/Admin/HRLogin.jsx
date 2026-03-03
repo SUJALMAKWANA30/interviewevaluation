@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { LogIn, AlertCircle, Building2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
@@ -11,6 +11,18 @@ export default function HRLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // Clear any stale session data when user lands on login page
+  useEffect(() => {
+    // If navigated here directly (not via logout), clean up old session
+    // so stale tokens don't interfere with the new login
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userType");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("selectedDriveId");
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,7 +38,6 @@ export default function HRLogin() {
         localStorage.setItem("refreshToken", result.refreshToken || "");
         localStorage.setItem("userType", "hr");
         localStorage.setItem("userRole", result.user.roleSlug || "hr");
-        localStorage.setItem("userName", result.user.name || email);
         localStorage.setItem(
           "userData",
           JSON.stringify({

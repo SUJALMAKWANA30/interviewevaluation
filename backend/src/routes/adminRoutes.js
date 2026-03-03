@@ -44,9 +44,9 @@ router.get("/interviewers", getInterviewerNames);
 // User CRUD (accessible to level 0-1: Super Admin, Admin)
 router.get("/users", authorizeLevel(1), getAllUsers);
 router.get("/users/:id", authorizeLevel(1), validateObjectId("id"), getUserById);
-router.post("/users", authorizeLevel(0), validateUserCreation, createUser);  // Only super admin
-router.put("/users/:id", authorizeLevel(0), validateObjectId("id"), updateUser); // Only super admin
-router.patch("/users/:id/toggle-status", authorizeLevel(0), validateObjectId("id"), toggleUserStatus);
-router.delete("/users/:id", authorizeLevel(0), validateObjectId("id"), deleteUser);
+router.post("/users", authorizeLevel(1), validateUserCreation, createUser);
+router.put("/users/:id", authorizeLevel(1), validateObjectId("id"), updateUser);
+router.patch("/users/:id/toggle-status", authorizeLevel(1), validateObjectId("id"), toggleUserStatus);
+router.delete("/users/:id", authorizeLevel(1), validateObjectId("id"), deleteUser);
 
 export default router;
