@@ -16,10 +16,12 @@ import HRHome from "./pages/Admin/HRHome";
 import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
 import DriveManager from "./pages/Admin/DriveManager";
+import ReportsPage from "./pages/Admin/ReportsPage";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
 import AdminPanel from "./pages/Admin/AdminPanel";
+import ApiDocsPage from "./pages/Admin/ApiDocsPage";
 
 // Utility Components
 import LocationGate from "./components/Admin/LocationGate";
@@ -38,6 +40,16 @@ function PermissionRoute({ children, module, action = "view" }) {
   const hasPermission = permissions.some(
     (p) => p.module === module && p.actions?.includes(action)
   );
+
+  // For "candidates" module, also allow users with any round permission
+  if (!hasPermission && module === "candidates") {
+    const hasRoundPermission = permissions.some(
+      (p) =>
+        ["round_r2", "round_r3", "round_r4"].includes(p.module) &&
+        p.actions?.includes("view")
+    );
+    if (hasRoundPermission) return children;
+  }
 
   if (!hasPermission) {
     return <Navigate to="/hr-home" replace />;
@@ -175,6 +187,18 @@ function App() {
           }
         />
         <Route
+          path="/hr/reports"
+          element={
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <PermissionRoute module="reports">
+                  <ReportsPage />
+                </PermissionRoute>
+              </HRLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin-settings"
           element={
             <ProtectedRoute requiredUserType="hr">
@@ -198,6 +222,9 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Hidden API docs — accessible only via direct URL */}
+        <Route path="/api-docs" element={<ApiDocsPage />} />
 
         {/* Catch all - redirect to login */}
         <Route path="*" element={<Navigate to="/user-login" replace />} />

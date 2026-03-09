@@ -43,6 +43,15 @@ export default function HrSidebar() {
     if (!item.permission) return true;
     // Super admin sees everything
     if (isSuperAdmin) return true;
+    // "Candidates" is also visible if user has any round permission (round_r2, round_r3, round_r4)
+    if (item.permission === "candidates") {
+      return (
+        can("candidates", "view") ||
+        can("round_r2", "view") ||
+        can("round_r3", "view") ||
+        can("round_r4", "view")
+      );
+    }
     // Check if user has 'view' permission on the module
     return can(item.permission, "view");
   });
