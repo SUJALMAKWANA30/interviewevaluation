@@ -20,7 +20,7 @@ export default function UserDashboard() {
   const [hasAlreadyStarted, setHasAlreadyStarted] = useState(false);
   const [userPhoto, setUserPhoto] = useState(null);
   const [driveRounds, setDriveRounds] = useState([]);
-  const [quizSegData, setQuizSegData] = useState(null);
+  const [quizRoundData, setQuizRoundData] = useState(null);
 
   const getPhotoSrc = (val) => {
     if (!val) return null;
@@ -78,18 +78,7 @@ export default function UserDashboard() {
             .catch(() => null);
           if (qr?.success && qr.data) {
             setTotalScore(qr.data.totalMarks ?? null);
-          }
-
-          // Fetch quiz-segregate data for round statuses (R2, R3, R4 etc.)
-          try {
-            const params = new URLSearchParams({ email });
-            const res = await fetch(`${API_URL}/quiz-segregate?${params.toString()}`);
-            if (res.ok) {
-              const json = await res.json();
-              if (json) setQuizSegData(json);
-            }
-          } catch {
-            // quiz-segregate service not available, skip
+            setQuizRoundData(qr.data);
           }
         }
       } catch {
@@ -134,7 +123,7 @@ export default function UserDashboard() {
     return steps;
   };
 
-  // Determine round status from quiz-segregate data
+  // Determine round status from quiz result data stored in this backend
   const getRoundStatus = (roundId) => {
     if (roundId === "applied") return "completed";
 
@@ -145,9 +134,9 @@ export default function UserDashboard() {
       return "not-started";
     }
 
-    // For interview rounds (R2, R3, R4, etc.) — check quiz-segregate data
-    if (quizSegData) {
-      const roundData = quizSegData[roundId.toUpperCase()] || quizSegData[roundId];
+    // For interview rounds (R2, R3, R4, etc.) — check persisted quiz result data
+    if (quizRoundData) {
+      const roundData = quizRoundData[roundId.toUpperCase()] || quizRoundData[roundId];
       if (Array.isArray(roundData) && roundData.length > 0 && roundData[0]) {
         const entry = roundData[0];
         const status = (entry.status || "").toLowerCase().trim();
@@ -155,7 +144,7 @@ export default function UserDashboard() {
         if (status === "drop" || status === "dropped") return "dropped";
         if (status === "rejected" || status === "reject") return "dropped";
         if (status === "in progress" || status === "in-progress") return "in-progress";
-        if (entry.interviewer || entry.rating) return "in-progress";
+        if (entry.interviewer || entry.rating || entry.managerialStatus) return "in-progress";
       }
     }
 

@@ -549,6 +549,14 @@ export const quizResultAPI = {
     });
     return handleResponse(response);
   },
+  updateQuizResultByEmail: async (email, data) => {
+    const response = await fetch(`${API_BASE}/quizresult/email/${encodeURIComponent(email)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
 };
 
 // ==================== USER TIME DETAILS APIs ====================

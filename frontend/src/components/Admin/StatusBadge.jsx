@@ -133,7 +133,7 @@ export function RoundStepper({ candidate, driveRounds }) {
     const interviewer = entry.interviewer || null;
 
     // R3 has special managerial status field
-    const managerialRating = entry["Managerial status"] || entry["managerial status"] || null;
+    const managerialRating = entry.managerialStatus || entry["Managerial status"] || entry["managerial status"] || null;
     const rating = managerialRating || entry.rating || null;
 
     return {

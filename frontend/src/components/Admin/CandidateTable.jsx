@@ -158,6 +158,7 @@ export function CandidateTable({
           const r3ManagerialStatus =
             r3Data && Array.isArray(r3Data) && r3Data[0]
               ? (
+                  r3Data[0].managerialStatus ||
                   r3Data[0]["Managerial status"] ||
                   r3Data[0]["managerial status"] ||
                   r3Data[0].rating ||

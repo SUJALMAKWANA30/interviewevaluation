@@ -117,6 +117,8 @@ export default function QuizForm() {
             questions: (section.questions || []).map((q, qIdx) => ({
               id: q._id || `s${sIdx}-q${qIdx}`,
               question: q.question,
+              codeSnippet: q.codeSnippet || "",
+              codeLanguage: q.codeLanguage || "javascript",
               image: null,
               options: q.options,
               correctAnswer: q.correctAnswer ?? 0,
@@ -336,9 +338,23 @@ export default function QuizForm() {
               <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold transition-all duration-300 ease-in-out hover:scale-110">
                 {qIdx + 1}
               </div>
-              <h2 className="text-lg md:text-xl font-semibold text-gray-800">
-                {question.question}
-              </h2>
+              <div className="flex-1">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-800">
+                  {question.question}
+                </h2>
+                {question.codeSnippet && (
+                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                        {question.codeLanguage || "code"}
+                      </span>
+                    </div>
+                    <pre className="overflow-x-auto px-4 py-4 text-sm leading-6 text-slate-100">
+                      <code>{question.codeSnippet}</code>
+                    </pre>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
