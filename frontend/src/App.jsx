@@ -17,6 +17,7 @@ import ExamList from "./pages/Admin/ExamList";
 import ExamBuilder from "./pages/Admin/ExamBuilder";
 import DriveManager from "./pages/Admin/DriveManager";
 import ReportsPage from "./pages/Admin/ReportsPage";
+import AuditLogsPage from "./pages/Admin/AuditLogsPage";
 import HRLayout from "./layout/HRLayout";
 
 // Admin
@@ -193,6 +194,18 @@ function App() {
               <HRLayout>
                 <PermissionRoute module="reports">
                   <ReportsPage />
+                </PermissionRoute>
+              </HRLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hr/audit-logs"
+          element={
+            <ProtectedRoute requiredUserType="hr">
+              <HRLayout>
+                <PermissionRoute module="audit_logs">
+                  <AuditLogsPage />
                 </PermissionRoute>
               </HRLayout>
             </ProtectedRoute>

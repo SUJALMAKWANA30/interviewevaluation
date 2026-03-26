@@ -3,7 +3,7 @@ import Exam from "../models/Exam.js";
 // Create a new exam
 export const createExam = async (req, res) => {
   try {
-    const { title, duration, sections } = req.body;
+    const { title, duration, sections, driveId } = req.body;
 
     if (!title || !duration || !sections || !sections.length) {
       return res.status(400).json({
@@ -17,6 +17,7 @@ export const createExam = async (req, res) => {
       duration,
       sections,
       status: "Draft",
+      driveId: driveId || null,
     });
 
     await exam.save();
@@ -38,7 +39,14 @@ export const createExam = async (req, res) => {
 // Get all exams
 export const getAllExams = async (req, res) => {
   try {
-    const exams = await Exam.find().sort({ createdAt: -1 });
+    const { driveId } = req.query;
+    const filter = {};
+
+    if (driveId) {
+      filter.driveId = driveId;
+    }
+
+    const exams = await Exam.find(filter).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -81,11 +89,16 @@ export const getExamById = async (req, res) => {
 // Update an exam
 export const updateExam = async (req, res) => {
   try {
-    const { title, duration, sections, status } = req.body;
+    const { title, duration, sections, status, driveId } = req.body;
+
+    const updateData = { title, duration, sections, status };
+    if (driveId !== undefined) {
+      updateData.driveId = driveId || null;
+    }
 
     const exam = await Exam.findByIdAndUpdate(
       req.params.id,
-      { title, duration, sections, status },
+      updateData,
       { new: true, runValidators: true }
     );
 

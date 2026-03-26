@@ -14,7 +14,8 @@ import {
   getInterviewerNames,
   getPermissionModules,
 } from "../controllers/roleUserController.js";
-import { authenticate, authorizeLevel } from "../middlewares/auth.js";
+import { getAuditLogs } from "../controllers/auditLogController.js";
+import { authenticate, authorizeLevel, authorizePermission } from "../middlewares/auth.js";
 import { auditMiddleware } from "../middlewares/audit.js";
 import { validateRole, validateUserCreation, validateObjectId } from "../middlewares/validators.js";
 
@@ -28,6 +29,9 @@ router.use(auditMiddleware);
 
 // Get permission modules (for role creation UI)
 router.get("/permissions/modules", getPermissionModules);
+
+// Audit logs
+router.get("/audit-logs", authorizePermission("audit_logs", "view"), getAuditLogs);
 
 // Get all roles (accessible to level 0-1: Super Admin, Admin)
 router.get("/roles", authorizeLevel(1), getAllRoles);

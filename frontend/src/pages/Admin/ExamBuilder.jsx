@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { examAPI } from "../../utils/apiClient";
+import { useDrive } from "../../context/DriveContext";
 
 const defaultQuestion = () => ({
   id: Math.random().toString(36).substring(2, 9),
   question: "",
   codeSnippet: "",
+  showCodeBlock: false,
   codeLanguage: "javascript",
   options: ["", "", "", ""],
   correctAnswer: 0,
@@ -33,12 +35,14 @@ const defaultSection = () => ({
 export default function ExamBuilder() {
   const navigate = useNavigate();
   const { id: examId } = useParams();
+  const { selectedDriveId } = useDrive();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState({
     title: "",
     duration: 30,
     sections: [],
+    driveId: null,
   });
 
   const [deleteConfig, setDeleteConfig] = useState({
@@ -60,6 +64,7 @@ export default function ExamBuilder() {
             setExam({
               title: d.title || "",
               duration: d.duration || 30,
+              driveId: d.driveId || null,
               sections: (d.sections || []).map((s) => ({
                 id: s._id || Math.random().toString(36).substring(2, 9),
                 title: s.title || "",
@@ -69,6 +74,7 @@ export default function ExamBuilder() {
                   id: q._id || Math.random().toString(36).substring(2, 9),
                   question: q.question || "",
                   codeSnippet: q.codeSnippet || "",
+                  showCodeBlock: Boolean((q.codeSnippet || "").trim().length),
                   codeLanguage: q.codeLanguage || "javascript",
                   options: q.options || ["", "", "", ""],
                   correctAnswer: q.correctAnswer ?? 0,
@@ -92,18 +98,28 @@ export default function ExamBuilder() {
       toast.error("Please add at least one section.");
       return;
     }
+    if (!examId && selectedDriveId === "all") {
+      toast.error("Please select a drive from the sidebar before creating an exam.");
+      return;
+    }
+
+    const resolvedDriveId =
+      selectedDriveId && selectedDriveId !== "all"
+        ? selectedDriveId
+        : exam.driveId || null;
 
     setSaving(true);
     try {
       const payload = {
         title: exam.title,
         duration: Number(exam.duration),
+        driveId: resolvedDriveId,
         sections: exam.sections.map((s) => ({
           title: s.title,
           duration: Number(s.duration),
           questions: s.questions.map((q) => ({
             question: q.question,
-            codeSnippet: q.codeSnippet || "",
+            codeSnippet: q.showCodeBlock ? q.codeSnippet || "" : "",
             codeLanguage: q.codeLanguage || "javascript",
             options: q.options,
             correctAnswer: q.correctAnswer,
@@ -447,7 +463,7 @@ export default function ExamBuilder() {
                       />
 
                       <div className="mb-4">
-                        {q.codeSnippet ? (
+                        {q.showCodeBlock ? (
                           <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-950">
                             <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
                               <div className="flex items-center gap-2 text-slate-200 text-xs font-medium uppercase tracking-wide">
@@ -494,7 +510,7 @@ export default function ExamBuilder() {
                                               ...s,
                                               questions: s.questions.map((qq) =>
                                                 qq.id === q.id
-                                                  ? { ...qq, codeSnippet: "" }
+                                                  ? { ...qq, codeSnippet: "", showCodeBlock: false }
                                                   : qq
                                               ),
                                             }
@@ -545,7 +561,12 @@ export default function ExamBuilder() {
                                         ...s,
                                         questions: s.questions.map((qq) =>
                                           qq.id === q.id
-                                            ? { ...qq, codeSnippet: "// Write code here", codeLanguage: qq.codeLanguage || "javascript" }
+                                            ? {
+                                                ...qq,
+                                                showCodeBlock: true,
+                                                codeSnippet: qq.codeSnippet || "",
+                                                codeLanguage: qq.codeLanguage || "javascript",
+                                              }
                                             : qq
                                         ),
                                       }

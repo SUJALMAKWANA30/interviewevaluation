@@ -551,6 +551,11 @@ export const getPermissionModules = async (req, res) => {
       actions: ["view", "export"],
     },
     {
+      module: "audit_logs",
+      label: "Audit Logs",
+      actions: ["view"],
+    },
+    {
       module: "users",
       label: "User Management",
       actions: ["view", "create", "edit", "delete"],

@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   FileText,
+  ClipboardList,
   BarChart3,
   Settings,
   Zap,
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Candidates", href: "/hr/candidate-dashboard", icon: Users, permission: "candidates" },
   { label: "Exams", href: "/hr/exam", icon: FileText, permission: "exams" },
   { label: "Reports", href: "/hr/reports", icon: BarChart3, permission: "reports" },
+  { label: "Audit Logs", href: "/hr/audit-logs", icon: ClipboardList, permission: "audit_logs" },
   { label: "Admin Settings", href: "/admin-settings", icon: Settings, permission: "settings" },
 ];
 

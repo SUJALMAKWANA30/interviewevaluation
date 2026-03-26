@@ -178,6 +178,7 @@ export const adminAPI = {
   toggleUserStatus: (id) => apiClient.patch(`/admin/users/${id}/toggle-status`),
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
   getInterviewerNames: () => apiClient.get("/admin/interviewers"),
+  getAuditLogs: (params = {}) => apiClient.get("/admin/audit-logs", params),
 };
 
 // ============ SCHEDULE APIs ============
@@ -215,7 +216,7 @@ export const driveAPI = {
 
 // ============ EXAM APIs ============
 export const examAPI = {
-  getAll: () => apiClient.get("/exams"),
+  getAll: (params = {}) => apiClient.get("/exams", params),
   getActive: () => apiClient.get("/exams/active"),
   getById: (id) => apiClient.get(`/exams/${id}`),
   create: (data) => apiClient.post("/exams", data),

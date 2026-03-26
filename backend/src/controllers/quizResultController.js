@@ -1,5 +1,24 @@
 import QuizResult from "../models/QuizResult.js";
 
+const getRoundAction = (update = {}) => {
+  const roundKeys = ["R2", "R3", "R4"];
+  const statuses = [];
+
+  roundKeys.forEach((key) => {
+    if (Array.isArray(update[key]) && update[key][0]?.status) {
+      statuses.push(String(update[key][0].status).toLowerCase().trim());
+    }
+  });
+
+  if (statuses.some((s) => s === "drop" || s === "dropped" || s === "rejected")) {
+    return "round.drop";
+  }
+  if (statuses.some((s) => s === "completed")) {
+    return "round.complete";
+  }
+  return "round.update";
+};
+
 const normalizeRoundReviews = (reviews = [], roundKey = "") => {
   if (!Array.isArray(reviews)) return [];
 
@@ -160,6 +179,7 @@ export const updateQuizResultByEmail = async (req, res) => {
       });
     }
 
+    const existing = await QuizResult.findOne({ email });
     const update = buildQuizResultUpdate(req.body);
     const quizResult = await QuizResult.findOneAndUpdate(
       { email },
@@ -171,6 +191,36 @@ export const updateQuizResultByEmail = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Quiz result not found for this email",
+      });
+    }
+
+    if (req.user?.type === "hr" && typeof req.audit === "function") {
+      const touchedRounds = ["R2", "R3", "R4"].filter((roundKey) => update[roundKey] !== undefined);
+      const hasRoundChanges = touchedRounds.length > 0;
+      const action = hasRoundChanges ? getRoundAction(update) : "candidate.update";
+
+      await req.audit(action, {
+        targetType: "QuizResult",
+        targetId: quizResult._id,
+        description: hasRoundChanges
+          ? `Updated ${touchedRounds.join(", ")} for ${email}`
+          : `Updated score data for ${email}`,
+        changes: {
+          before: {
+            totalMarks: existing?.totalMarks ?? null,
+            sectionWiseMarks: existing?.sectionWiseMarks ?? [],
+            R2: existing?.R2 ?? [],
+            R3: existing?.R3 ?? [],
+            R4: existing?.R4 ?? [],
+          },
+          after: {
+            totalMarks: quizResult.totalMarks ?? null,
+            sectionWiseMarks: quizResult.sectionWiseMarks ?? [],
+            R2: quizResult.R2 ?? [],
+            R3: quizResult.R3 ?? [],
+            R4: quizResult.R4 ?? [],
+          },
+        },
       });
     }
 
