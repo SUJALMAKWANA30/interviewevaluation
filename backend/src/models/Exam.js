@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const questionSchema = new mongoose.Schema({
   question: { type: String, default: "" },
+  codeSnippet: { type: String, default: "" },
+  codeLanguage: {
+    type: String,
+    enum: ["javascript", "python", "java", "cpp", "sql", "plaintext"],
+    default: "javascript",
+  },
   options: [{ type: String }],
   correctAnswer: { type: Number, default: 0 },
 });

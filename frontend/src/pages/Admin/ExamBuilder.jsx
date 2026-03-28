@@ -7,13 +7,19 @@ import {
   ChevronUp,
   ArrowUp,
   ArrowDown,
+  Code2,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { examAPI } from "../../utils/apiClient";
+import { useDrive } from "../../context/DriveContext";
 
 const defaultQuestion = () => ({
   id: Math.random().toString(36).substring(2, 9),
   question: "",
+  codeSnippet: "",
+  showCodeBlock: false,
+  codeLanguage: "javascript",
   options: ["", "", "", ""],
   correctAnswer: 0,
 });
@@ -29,12 +35,14 @@ const defaultSection = () => ({
 export default function ExamBuilder() {
   const navigate = useNavigate();
   const { id: examId } = useParams();
+  const { selectedDriveId } = useDrive();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [exam, setExam] = useState({
     title: "",
     duration: 30,
     sections: [],
+    driveId: null,
   });
 
   const [deleteConfig, setDeleteConfig] = useState({
@@ -56,6 +64,7 @@ export default function ExamBuilder() {
             setExam({
               title: d.title || "",
               duration: d.duration || 30,
+              driveId: d.driveId || null,
               sections: (d.sections || []).map((s) => ({
                 id: s._id || Math.random().toString(36).substring(2, 9),
                 title: s.title || "",
@@ -64,6 +73,9 @@ export default function ExamBuilder() {
                 questions: (s.questions || []).map((q) => ({
                   id: q._id || Math.random().toString(36).substring(2, 9),
                   question: q.question || "",
+                  codeSnippet: q.codeSnippet || "",
+                  showCodeBlock: Boolean((q.codeSnippet || "").trim().length),
+                  codeLanguage: q.codeLanguage || "javascript",
                   options: q.options || ["", "", "", ""],
                   correctAnswer: q.correctAnswer ?? 0,
                 })),
@@ -86,17 +98,29 @@ export default function ExamBuilder() {
       toast.error("Please add at least one section.");
       return;
     }
+    if (!examId && selectedDriveId === "all") {
+      toast.error("Please select a drive from the sidebar before creating an exam.");
+      return;
+    }
+
+    const resolvedDriveId =
+      selectedDriveId && selectedDriveId !== "all"
+        ? selectedDriveId
+        : exam.driveId || null;
 
     setSaving(true);
     try {
       const payload = {
         title: exam.title,
         duration: Number(exam.duration),
+        driveId: resolvedDriveId,
         sections: exam.sections.map((s) => ({
           title: s.title,
           duration: Number(s.duration),
           questions: s.questions.map((q) => ({
             question: q.question,
+            codeSnippet: q.showCodeBlock ? q.codeSnippet || "" : "",
+            codeLanguage: q.codeLanguage || "javascript",
             options: q.options,
             correctAnswer: q.correctAnswer,
           })),
@@ -437,6 +461,125 @@ export default function ExamBuilder() {
                         }
                         className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm mb-4"
                       />
+
+                      <div className="mb-4">
+                        {q.showCodeBlock ? (
+                          <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-950">
+                            <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+                              <div className="flex items-center gap-2 text-slate-200 text-xs font-medium uppercase tracking-wide">
+                                <Code2 size={14} />
+                                Code Block
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={q.codeLanguage || "javascript"}
+                                  onChange={(e) =>
+                                    setExam((prev) => ({
+                                      ...prev,
+                                      sections: prev.sections.map((s) =>
+                                        s.id === section.id
+                                          ? {
+                                              ...s,
+                                              questions: s.questions.map((qq) =>
+                                                qq.id === q.id
+                                                  ? { ...qq, codeLanguage: e.target.value }
+                                                  : qq
+                                              ),
+                                            }
+                                          : s
+                                      ),
+                                    }))
+                                  }
+                                  className="bg-slate-800 text-slate-100 border border-slate-700 rounded-md px-2 py-1 text-xs"
+                                >
+                                  <option value="javascript">JavaScript</option>
+                                  <option value="python">Python</option>
+                                  <option value="java">Java</option>
+                                  <option value="cpp">C++</option>
+                                  <option value="sql">SQL</option>
+                                  <option value="plaintext">Plain Text</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExam((prev) => ({
+                                      ...prev,
+                                      sections: prev.sections.map((s) =>
+                                        s.id === section.id
+                                          ? {
+                                              ...s,
+                                              questions: s.questions.map((qq) =>
+                                                qq.id === q.id
+                                                  ? { ...qq, codeSnippet: "", showCodeBlock: false }
+                                                  : qq
+                                              ),
+                                            }
+                                          : s
+                                      ),
+                                    }))
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-600"
+                                >
+                                  <X size={12} /> Remove
+                                </button>
+                              </div>
+                            </div>
+                            <textarea
+                              rows={8}
+                              value={q.codeSnippet}
+                              onChange={(e) =>
+                                setExam((prev) => ({
+                                  ...prev,
+                                  sections: prev.sections.map((s) =>
+                                    s.id === section.id
+                                      ? {
+                                          ...s,
+                                          questions: s.questions.map((qq) =>
+                                            qq.id === q.id
+                                              ? { ...qq, codeSnippet: e.target.value }
+                                              : qq
+                                          ),
+                                        }
+                                      : s
+                                  ),
+                                }))
+                              }
+                              spellCheck={false}
+                              className="w-full min-h-[180px] resize-y border-0 bg-slate-950 px-4 py-3 font-mono text-sm text-slate-100 outline-none"
+                              placeholder="Write the code snippet shown to candidates here..."
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExam((prev) => ({
+                                ...prev,
+                                sections: prev.sections.map((s) =>
+                                  s.id === section.id
+                                    ? {
+                                        ...s,
+                                        questions: s.questions.map((qq) =>
+                                          qq.id === q.id
+                                            ? {
+                                                ...qq,
+                                                showCodeBlock: true,
+                                                codeSnippet: qq.codeSnippet || "",
+                                                codeLanguage: qq.codeLanguage || "javascript",
+                                              }
+                                            : qq
+                                        ),
+                                      }
+                                    : s
+                                ),
+                              }))
+                            }
+                            className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                          >
+                            <Code2 size={15} /> Add Code Block
+                          </button>
+                        )}
+                      </div>
 
                       {/* OPTIONS */}
                       <div className="grid grid-cols-2 gap-3">

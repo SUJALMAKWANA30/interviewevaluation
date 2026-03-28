@@ -44,7 +44,7 @@ export default function HrDashboard() {
         const [candRes, quizRes, examRes] = await Promise.allSettled([
           candidateAPI.getAll(driveParams.driveId),
           apiClient.get("/quizresult", driveParams),
-          examAPI.getAll(),
+          examAPI.getAll(driveParams),
         ]);
 
         if (candRes.status === "fulfilled") {

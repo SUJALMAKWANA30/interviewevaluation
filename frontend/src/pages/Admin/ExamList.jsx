@@ -4,10 +4,12 @@ import { Plus, Search, LayoutGrid, List, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { examAPI } from "../../utils/apiClient";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useDrive } from "../../context/DriveContext";
 
 export default function ExamsList() {
   const navigate = useNavigate();
   const { can } = usePermissions();
+  const { selectedDriveId, selectedDrive } = useDrive();
   const [viewMode, setViewMode] = useState("cards");
   const [search, setSearch] = useState("");
   const [exams, setExams] = useState([]);
@@ -18,8 +20,13 @@ export default function ExamsList() {
 
   // Fetch exams from DB
   const fetchExams = async () => {
+    setLoading(true);
     try {
-      const res = await examAPI.getAll();
+      const params =
+        selectedDriveId && selectedDriveId !== "all"
+          ? { driveId: selectedDriveId }
+          : {};
+      const res = await examAPI.getAll(params);
       if (res.success) {
         setExams(res.data || []);
       }
@@ -33,7 +40,7 @@ export default function ExamsList() {
 
   useEffect(() => {
     fetchExams();
-  }, []);
+  }, [selectedDriveId]);
 
   // Toggle active status
   const handleToggleActive = async (e, examId) => {
@@ -173,7 +180,9 @@ export default function ExamsList() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Exams</h1>
             <p className="text-sm text-gray-500">
-              Manage and create assessment exams
+              {selectedDriveId === "all"
+                ? "Manage and create assessment exams across all drives"
+                : `Manage and create assessment exams for ${selectedDrive?.name || "selected drive"}`}
             </p>
           </div>
 

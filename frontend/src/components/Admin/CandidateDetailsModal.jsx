@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit2, Save, Loader2, MessageSquare, FileText, Image, CreditCard, Receipt, ExternalLink, Check, Lock } from 'lucide-react';
 import { CandidatePhoto, getGoogleDriveImageUrl } from './CandidatePhoto';
 import { usePermissions } from '../../hooks/usePermissions';
+import { quizResultAPI } from '../../utils/api';
 
 // SECTION_CONFIG removed — R1 sections are now dynamic from sectionWiseMarks
 
@@ -14,6 +15,8 @@ const INTERVIEWER_NAMES = [
   'Anjali Verma',
   'Rajesh Nair'
 ];
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Admin', onRefresh }) {
   const isAdmin = userRole === 'Admin';
@@ -65,6 +68,83 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
   // Store the email from quiz database (may be different from candidate.email)
   const [quizEmail, setQuizEmail] = useState('');
 
+  const getRoundPayload = (roundKey, nextStatus) => ({
+    R2: [{
+      rating: String(r2Rating || ''),
+      comments: comments.r2 || '',
+      interviewer: r2Interviewer || '',
+      status: roundKey === 'r2' && nextStatus !== undefined ? nextStatus : (r2RoundStatus || ''),
+    }],
+    R3: [{
+      managerialStatus: r3Status || '',
+      comments: comments.r3 || '',
+      interviewer: r3Interviewer || '',
+      status: roundKey === 'r3' && nextStatus !== undefined ? nextStatus : (r3RoundStatus || ''),
+    }],
+    R4: [{
+      rating: String(r4Rating || ''),
+      comments: comments.r4 || '',
+      interviewer: r4Interviewer || '',
+      status: roundKey === 'r4' && nextStatus !== undefined ? nextStatus : (r4RoundStatus || ''),
+    }],
+    totalMarks: Number(candidate.quiz?.totalMarks ?? displayTotal ?? 0),
+  });
+
+  const applyQuizDataToState = (quizData) => {
+    if (!quizData) return;
+
+    const quizDbEmail = quizData.email || quizData.Email || '';
+    if (quizDbEmail) {
+      setQuizEmail(quizDbEmail);
+    }
+
+    if (quizData.sectionWiseMarks?.length) {
+      const nextMarks = {};
+      quizData.sectionWiseMarks.forEach((section) => {
+        const key = (section.sectionName || '').toLowerCase();
+        if (key.includes('logical')) nextMarks.logical = Number(section.marks) || 0;
+        if (key.includes('database')) nextMarks.database = Number(section.marks) || 0;
+        if (key.includes('communication')) nextMarks.communication = Number(section.marks) || 0;
+        if (key.includes('rpa')) nextMarks.rpa = Number(section.marks) || 0;
+        if (key.includes('genai')) nextMarks.genAi = Number(section.marks) || 0;
+        if (key.includes('python')) nextMarks.python = Number(section.marks) || 0;
+      });
+      setEditedMarks((prev) => ({ ...prev, ...nextMarks }));
+    }
+
+    if (quizData.R2 && Array.isArray(quizData.R2) && quizData.R2[0]) {
+      setR2Rating(parseInt(quizData.R2[0].rating) || 0);
+      setComments(prev => ({ ...prev, r2: quizData.R2[0].comments || '' }));
+      const r2IntFromApi = quizData.R2[0].interviewer || '';
+      setR2Interviewer(r2IntFromApi || (canEditR2 && loggedInUserName ? loggedInUserName : ''));
+      setR2RoundStatus(quizData.R2[0].status || '');
+    } else if (canEditR2 && loggedInUserName) {
+      setR2Interviewer(loggedInUserName);
+    }
+
+    if (quizData.R3 && Array.isArray(quizData.R3) && quizData.R3[0]) {
+      const r3ManagerialStatus = quizData.R3[0].managerialStatus || quizData.R3[0]['Managerial status'] || quizData.R3[0]['managerial status'] || quizData.R3[0].rating || '';
+      setR3Status(r3ManagerialStatus.toUpperCase().trim());
+      setComments(prev => ({ ...prev, r3: quizData.R3[0].comments || '' }));
+      const r3IntFromApi = quizData.R3[0].interviewer || '';
+      setR3Interviewer(r3IntFromApi || (canEditR3 && loggedInUserName ? loggedInUserName : ''));
+      setR3RoundStatus(quizData.R3[0].status || '');
+    } else if (canEditR3 && loggedInUserName) {
+      setR3Interviewer(loggedInUserName);
+    }
+
+    if (quizData.R4 && Array.isArray(quizData.R4) && quizData.R4[0]) {
+      setR4Rating(parseInt(quizData.R4[0].rating) || 0);
+      setR4Status(quizData.R4[0].rating || '');
+      setComments(prev => ({ ...prev, r4: quizData.R4[0].comments || '' }));
+      const r4IntFromApi = quizData.R4[0].interviewer || '';
+      setR4Interviewer(r4IntFromApi || (canEditR4 && loggedInUserName ? loggedInUserName : ''));
+      setR4RoundStatus(quizData.R4[0].status || '');
+    } else if (canEditR4 && loggedInUserName) {
+      setR4Interviewer(loggedInUserName);
+    }
+  };
+
   // Auto-save interviewer to database
   const autoSaveInterviewer = async (roundKey, interviewerName, newStatus) => {
     // Use quizEmail if available, otherwise fall back to candidate.email
@@ -75,53 +155,14 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
     setInterviewerSaved(prev => ({ ...prev, [roundKey]: false }));
     
     try {
-      // Build payload with current values
-      const payload = {
-        email: emailForUpdate,
-        R2: [{ 
-          rating: String(roundKey === 'r2' ? r2Rating : r2Rating) || '', 
-          comments: comments.r2 || '',
-          interviewer: roundKey === 'r2' ? interviewerName : r2Interviewer || '',
-          status: roundKey === 'r2' ? newStatus : r2RoundStatus || ''
-        }],
-        R3: [{ 
-          'Managerial status': roundKey === 'r3' ? r3Status : (r3Status || ''), 
-          comments: comments.r3 || '',
-          interviewer: roundKey === 'r3' ? interviewerName : r3Interviewer || '',
-          status: roundKey === 'r3' ? newStatus : r3RoundStatus || ''
-        }],
-        R4: [{ 
-          rating: String(roundKey === 'r4' ? r4Rating : r4Rating) || '', 
-          comments: comments.r4 || '',
-          interviewer: roundKey === 'r4' ? interviewerName : r4Interviewer || '',
-          status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
-        }],
-        // Dynamically include section-wise marks
-        ...(candidate.quiz?.sectionWiseMarks
-          ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
-              acc[s.sectionName] = String(s.marks || 0);
-              return acc;
-            }, {})
-          : {
-              Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
-              GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
-              Python: String(candidate.quiz?.Python || editedMarks.python || ''),
-              RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
-              Database: String(candidate.quiz?.Database || editedMarks.database || ''),
-              Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
-            }),
-        'Final Score': String(candidate.quiz?.['Final Score'] || ''),
-      };
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+      const response = await quizResultAPI.updateQuizResultByEmail(emailForUpdate, {
+        ...getRoundPayload(roundKey, newStatus),
+        ...(roundKey === 'r2' ? { R2: [{ ...getRoundPayload(roundKey, newStatus).R2[0], interviewer: interviewerName }] } : {}),
+        ...(roundKey === 'r3' ? { R3: [{ ...getRoundPayload(roundKey, newStatus).R3[0], interviewer: interviewerName }] } : {}),
+        ...(roundKey === 'r4' ? { R4: [{ ...getRoundPayload(roundKey, newStatus).R4[0], interviewer: interviewerName }] } : {}),
       });
 
-      if (!response.ok) throw new Error('Failed to auto-save interviewer');
+      if (!response?.success) throw new Error('Failed to auto-save interviewer');
       
       setInterviewerSaved(prev => ({ ...prev, [roundKey]: true }));
       setTimeout(() => {
@@ -137,12 +178,15 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
   // Fetch interviewer names from API
   const fetchInterviewerNames = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/interviewer`);
+      const response = await fetch(`${API_BASE_URL}/api/admin/interviewers`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken') || ''}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        // Extract names from the first group in data array
-        if (data.data && data.data[0] && data.data[0].names) {
-          setInterviewerNames(data.data[0].names);
+        if (Array.isArray(data.data)) {
+          setInterviewerNames(data.data);
         }
       }
     } catch (error) {
@@ -157,75 +201,9 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
     
     setFetchingData(true);
     try {
-      // Build query params with name, contact, and email
-      const params = new URLSearchParams();
-      const cleanName = (name && name !== '—' && name !== '-') ? name.trim() : '';
-      const cleanPhone = (phone && phone !== '—' && phone !== '-') ? phone.toString().replace(/\D/g, '') : '';
-      
-      if (cleanName) params.append('name', cleanName);
-      if (cleanPhone) params.append('contact', cleanPhone);
-      params.append('email', email.toLowerCase());
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        const quizData = data.data?.[0] || data[0] || data;
-        
-        if (quizData) {
-          // Store the quiz email for updates (this is the email that exists in quiz database)
-          const quizDbEmail = quizData.Email || quizData.email || '';
-          if (quizDbEmail) {
-            setQuizEmail(quizDbEmail);
-          }
-          
-          // Set marks
-          setEditedMarks({
-            logical: parseInt(quizData.Logical) || 0,
-            database: parseInt(quizData.Database) || 0,
-            communication: parseInt(quizData.Communication) || 0,
-            rpa: parseInt(quizData.RPA) || 0,
-            genAi: parseInt(quizData.GenAI) || 0,
-            python: parseInt(quizData.Python) || 0,
-          });
-          
-          // Set R2 data
-          if (quizData.R2 && Array.isArray(quizData.R2) && quizData.R2[0]) {
-            setR2Rating(parseInt(quizData.R2[0].rating) || 0);
-            setComments(prev => ({ ...prev, r2: quizData.R2[0].comments || '' }));
-            const r2IntFromApi = quizData.R2[0].interviewer || '';
-            setR2Interviewer(r2IntFromApi || (canEditR2 && loggedInUserName ? loggedInUserName : ''));
-            setR2RoundStatus(quizData.R2[0].status || '');
-          } else if (canEditR2 && loggedInUserName) {
-            // No R2 data yet — pre-fill with logged-in user's name
-            setR2Interviewer(loggedInUserName);
-          }
-          
-          // Set R3 data
-          if (quizData.R3 && Array.isArray(quizData.R3) && quizData.R3[0]) {
-            // R3 uses 'Managerial status' field for GO/NO GO/HOLD (not 'rating')
-            const r3ManagerialStatus = quizData.R3[0]['Managerial status'] || quizData.R3[0]['managerial status'] || quizData.R3[0].rating || '';
-            const r3RatingValue = r3ManagerialStatus.toUpperCase().trim();
-            setR3Status(r3RatingValue);
-            setComments(prev => ({ ...prev, r3: quizData.R3[0].comments || '' }));
-            const r3IntFromApi = quizData.R3[0].interviewer || '';
-            setR3Interviewer(r3IntFromApi || (canEditR3 && loggedInUserName ? loggedInUserName : ''));
-            setR3RoundStatus(quizData.R3[0].status || '');
-          } else if (canEditR3 && loggedInUserName) {
-            setR3Interviewer(loggedInUserName);
-          }
-          
-          // Set R4 data
-          if (quizData.R4 && Array.isArray(quizData.R4) && quizData.R4[0]) {
-            setR4Rating(parseInt(quizData.R4[0].rating) || 0);
-            setR4Status(quizData.R4[0].rating || '');
-            setComments(prev => ({ ...prev, r4: quizData.R4[0].comments || '' }));
-            const r4IntFromApi = quizData.R4[0].interviewer || '';
-            setR4Interviewer(r4IntFromApi || (canEditR4 && loggedInUserName ? loggedInUserName : ''));
-            setR4RoundStatus(quizData.R4[0].status || '');
-          } else if (canEditR4 && loggedInUserName) {
-            setR4Interviewer(loggedInUserName);
-          }
-        }
+      const response = await quizResultAPI.getQuizResultByEmail(email.toLowerCase());
+      if (response?.success && response.data) {
+        applyQuizDataToState(response.data);
       }
     } catch (error) {
       console.error('Error fetching candidate data:', error);
@@ -301,26 +279,27 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       // Use quizEmail if available, otherwise fall back to candidate.email
       const emailForUpdate = quizEmail || candidate.email;
       
-      const payload = {
-        email: emailForUpdate,
-        Logical: Number(editedMarks.logical) || 0,
-        Database: Number(editedMarks.database) || 0,
-        Communication: Number(editedMarks.communication) || 0,
-        RPA: Number(editedMarks.rpa) || 0,
-        GenAI: Number(editedMarks.genAi) || 0,
-        Python: Number(editedMarks.python) || 0,
-        "Final Score": String(calculatedTotal)
-      };
+      const nextSectionWiseMarks = (candidate.quiz?.sectionWiseMarks || []).map((section) => {
+        const sectionName = section.sectionName || '';
+        const key = sectionName.toLowerCase();
+        let marks = section.marks;
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        if (key.includes('logical')) marks = Number(editedMarks.logical) || 0;
+        if (key.includes('database')) marks = Number(editedMarks.database) || 0;
+        if (key.includes('communication')) marks = Number(editedMarks.communication) || 0;
+        if (key.includes('rpa')) marks = Number(editedMarks.rpa) || 0;
+        if (key.includes('genai')) marks = Number(editedMarks.genAi) || 0;
+        if (key.includes('python')) marks = Number(editedMarks.python) || 0;
+
+        return { ...section, marks, correctAnswers: marks };
       });
 
-      if (!response.ok) throw new Error('Failed to update marks');
+      const response = await quizResultAPI.updateQuizResultByEmail(emailForUpdate, {
+        sectionWiseMarks: nextSectionWiseMarks,
+        totalMarks: calculatedTotal,
+      });
+
+      if (!response?.success) throw new Error('Failed to update marks');
 
       setSaved(true);
       setIsEditing(false);
@@ -366,54 +345,9 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       // Use quizEmail if available, otherwise fall back to candidate.email
       const emailForUpdate = quizEmail || candidate.email;
       
-      const payload = {
-        email: emailForUpdate,
-        R2: [{ 
-          rating: String(r2Rating || ''), 
-          comments: comments.r2 || '',
-          interviewer: r2Interviewer || '',
-          status: roundKey === 'r2' ? newStatus : r2RoundStatus || ''
-        }],
-        R3: [{ 
-          'Managerial status': roundKey === 'r3' ? r3Status : (r3Status || ''), 
-          comments: comments.r3 || '',
-          interviewer: r3Interviewer || '',
-          status: roundKey === 'r3' ? newStatus : r3RoundStatus || ''
-        }],
-        R4: [{ 
-          rating: String(r4Rating || ''), 
-          comments: comments.r4 || '',
-          interviewer: r4Interviewer || '',
-          status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
-        }],
-        // Dynamically include section-wise marks from quiz result
-        ...(candidate.quiz?.sectionWiseMarks
-          ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
-              acc[s.sectionName] = String(s.marks || 0);
-              return acc;
-            }, {})
-          : {
-              Logical: String(candidate.quiz?.Logical || editedMarks.logical || ''),
-              GenAI: String(candidate.quiz?.GenAI || editedMarks.genAi || ''),
-              Python: String(candidate.quiz?.Python || editedMarks.python || ''),
-              RPA: String(candidate.quiz?.RPA || editedMarks.rpa || ''),
-              Database: String(candidate.quiz?.Database || editedMarks.database || ''),
-              Communication: String(candidate.quiz?.Communication || editedMarks.communication || ''),
-            }),
-        'Final Score': String(candidate.quiz?.['Final Score'] || displayTotal || ''),
-      };
+      const response = await quizResultAPI.updateQuizResultByEmail(emailForUpdate, getRoundPayload(roundKey, newStatus));
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      const responseData = await response.json().catch(() => null);
-
-      if (!response.ok) throw new Error('Failed to save round data');
+      if (!response?.success) throw new Error('Failed to save round data');
 
       setRoundSaveStatus(prev => ({ ...prev, [roundKey]: true }));
       setTimeout(() => {

@@ -1,22 +1,99 @@
 import QuizResult from "../models/QuizResult.js";
 
+const getRoundAction = (update = {}) => {
+  const roundKeys = ["R2", "R3", "R4"];
+  const statuses = [];
+
+  roundKeys.forEach((key) => {
+    if (Array.isArray(update[key]) && update[key][0]?.status) {
+      statuses.push(String(update[key][0].status).toLowerCase().trim());
+    }
+  });
+
+  if (statuses.some((s) => s === "drop" || s === "dropped" || s === "rejected")) {
+    return "round.drop";
+  }
+  if (statuses.some((s) => s === "completed")) {
+    return "round.complete";
+  }
+  return "round.update";
+};
+
+const normalizeRoundReviews = (reviews = [], roundKey = "") => {
+  if (!Array.isArray(reviews)) return [];
+
+  return reviews.slice(0, 1).map((review) => ({
+    rating: review?.rating != null ? String(review.rating) : "",
+    comments: review?.comments != null ? String(review.comments) : "",
+    interviewer: review?.interviewer != null ? String(review.interviewer) : "",
+    status: review?.status != null ? String(review.status).toLowerCase().trim() : "",
+    managerialStatus:
+      roundKey === "R3"
+        ? String(
+            review?.managerialStatus ??
+              review?.["Managerial status"] ??
+              review?.["managerial status"] ??
+              ""
+          )
+            .toUpperCase()
+            .trim()
+        : "",
+  }));
+};
+
+const buildQuizResultUpdate = (payload = {}) => {
+  const update = {};
+
+  if (payload.mobileNumber !== undefined) update.mobileNumber = payload.mobileNumber;
+  if (payload.name !== undefined) update.name = payload.name;
+  if (payload.sectionWiseMarks !== undefined) update.sectionWiseMarks = payload.sectionWiseMarks;
+  if (payload.driveId !== undefined) update.driveId = payload.driveId || null;
+  if (payload.totalMarks !== undefined) {
+    update.totalMarks = Number(payload.totalMarks) || 0;
+  } else if (payload["Final Score"] !== undefined) {
+    update.totalMarks = Number(payload["Final Score"]) || 0;
+  }
+  if (payload.R2 !== undefined) update.R2 = normalizeRoundReviews(payload.R2, "R2");
+  if (payload.R3 !== undefined) update.R3 = normalizeRoundReviews(payload.R3, "R3");
+  if (payload.R4 !== undefined) update.R4 = normalizeRoundReviews(payload.R4, "R4");
+
+  return update;
+};
+
 export const createQuizResult = async (req, res) => {
   try {
-    const { email, mobileNumber, name, sectionWiseMarks, totalMarks, driveId } = req.body;
-    const newQuizResult = new QuizResult({
-      email,
-      mobileNumber,
-      name,
-      sectionWiseMarks,
-      totalMarks,
-      examDate: new Date(),
-      driveId: driveId || null,
-    });
-    await newQuizResult.save();
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const update = buildQuizResultUpdate(req.body);
+    update.examDate = new Date();
+
+    const quizResult = await QuizResult.findOneAndUpdate(
+      { email: String(email).trim().toLowerCase() },
+      {
+        $set: {
+          email: String(email).trim().toLowerCase(),
+          ...update,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
     res.status(201).json({
       success: true,
-      message: "Quiz result created successfully",
-      data: newQuizResult,
+      message: "Quiz result saved successfully",
+      data: quizResult,
     });
   } catch (error) {
     res.status(500).json({
@@ -71,7 +148,7 @@ export const getQuizResultById = async (req, res) => {
 
 export const getQuizResultByEmail = async (req, res) => {
   try {
-    const quizResult = await QuizResult.findOne({ email: req.params.email });
+    const quizResult = await QuizResult.findOne({ email: req.params.email.toLowerCase() }).sort({ createdAt: -1 });
     if (!quizResult) {
       return res.status(404).json({
         success: false,
@@ -86,6 +163,76 @@ export const getQuizResultByEmail = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching quiz result",
+      error: error.message,
+    });
+  }
+};
+
+export const updateQuizResultByEmail = async (req, res) => {
+  try {
+    const email = String(req.params.email || "").trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const existing = await QuizResult.findOne({ email });
+    const update = buildQuizResultUpdate(req.body);
+    const quizResult = await QuizResult.findOneAndUpdate(
+      { email },
+      { $set: update },
+      { new: true, runValidators: true }
+    );
+
+    if (!quizResult) {
+      return res.status(404).json({
+        success: false,
+        message: "Quiz result not found for this email",
+      });
+    }
+
+    if (req.user?.type === "hr" && typeof req.audit === "function") {
+      const touchedRounds = ["R2", "R3", "R4"].filter((roundKey) => update[roundKey] !== undefined);
+      const hasRoundChanges = touchedRounds.length > 0;
+      const action = hasRoundChanges ? getRoundAction(update) : "candidate.update";
+
+      await req.audit(action, {
+        targetType: "QuizResult",
+        targetId: quizResult._id,
+        description: hasRoundChanges
+          ? `Updated ${touchedRounds.join(", ")} for ${email}`
+          : `Updated score data for ${email}`,
+        changes: {
+          before: {
+            totalMarks: existing?.totalMarks ?? null,
+            sectionWiseMarks: existing?.sectionWiseMarks ?? [],
+            R2: existing?.R2 ?? [],
+            R3: existing?.R3 ?? [],
+            R4: existing?.R4 ?? [],
+          },
+          after: {
+            totalMarks: quizResult.totalMarks ?? null,
+            sectionWiseMarks: quizResult.sectionWiseMarks ?? [],
+            R2: quizResult.R2 ?? [],
+            R3: quizResult.R3 ?? [],
+            R4: quizResult.R4 ?? [],
+          },
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Quiz result updated successfully",
+      data: quizResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error updating quiz result",
       error: error.message,
     });
   }
