@@ -20,6 +20,43 @@ const roundSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const examCenterSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    lat: {
+      type: Number,
+      required: true,
+      min: -90,
+      max: 90,
+    },
+    lon: {
+      type: Number,
+      required: true,
+      min: -180,
+      max: 180,
+    },
+    radiusMeters: {
+      type: Number,
+      required: true,
+      min: 10,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    priority: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  { _id: false }
+);
+
 const driveSchema = new mongoose.Schema(
   {
     name: {
@@ -49,6 +86,10 @@ const driveSchema = new mongoose.Schema(
         { name: "R3", type: "Interview", order: 3 },
         { name: "R4", type: "Interview", order: 4 },
       ],
+    },
+    examCenters: {
+      type: [examCenterSchema],
+      default: [],
     },
     isActive: {
       type: Boolean,

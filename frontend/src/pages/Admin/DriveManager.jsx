@@ -23,6 +23,15 @@ const DEFAULT_ROUNDS = [
   { name: "R4", type: "Interview", order: 4 },
 ];
 
+const createEmptyCenter = (index = 0) => ({
+  name: `Center ${index + 1}`,
+  lat: "",
+  lon: "",
+  radiusMeters: "300",
+  isActive: true,
+  priority: index,
+});
+
 export default function DriveManager() {
   const { can } = usePermissions();
   const [drives, setDrives] = useState([]);
@@ -35,6 +44,7 @@ export default function DriveManager() {
     description: "",
     date: "",
     rounds: [...DEFAULT_ROUNDS],
+    examCenters: [createEmptyCenter(0)],
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,7 +64,14 @@ export default function DriveManager() {
   }, []);
 
   const resetForm = () => {
-    setFormData({ name: "", location: "", description: "", date: "", rounds: [...DEFAULT_ROUNDS] });
+    setFormData({
+      name: "",
+      location: "",
+      description: "",
+      date: "",
+      rounds: [...DEFAULT_ROUNDS],
+      examCenters: [createEmptyCenter(0)],
+    });
     setEditingDrive(null);
     setShowCreateModal(false);
   };
@@ -66,6 +83,46 @@ export default function DriveManager() {
       return;
     }
 
+    if (!Array.isArray(formData.examCenters) || formData.examCenters.length < 1) {
+      toast.error("At least one exam center is required");
+      return;
+    }
+
+    const normalizedCenters = [];
+    for (let index = 0; index < formData.examCenters.length; index += 1) {
+      const center = formData.examCenters[index];
+      const name = (center.name || "").trim();
+      const lat = Number(center.lat);
+      const lon = Number(center.lon);
+      const radiusMeters = Number(center.radiusMeters);
+
+      if (!name) {
+        toast.error(`Exam center ${index + 1}: name is required`);
+        return;
+      }
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+        toast.error(`Exam center ${index + 1}: latitude must be between -90 and 90`);
+        return;
+      }
+      if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
+        toast.error(`Exam center ${index + 1}: longitude must be between -180 and 180`);
+        return;
+      }
+      if (!Number.isFinite(radiusMeters) || radiusMeters < 10) {
+        toast.error(`Exam center ${index + 1}: radius must be at least 10 meters`);
+        return;
+      }
+
+      normalizedCenters.push({
+        name,
+        lat,
+        lon,
+        radiusMeters,
+        isActive: center.isActive !== false,
+        priority: index,
+      });
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -73,6 +130,7 @@ export default function DriveManager() {
         location: formData.location.trim(),
         description: formData.description.trim(),
         date: formData.date || null,
+        examCenters: normalizedCenters,
         rounds: formData.rounds.map((r, i) => ({
           name: r.name.trim(),
           type: r.type,
@@ -136,6 +194,16 @@ export default function DriveManager() {
       rounds: drive.rounds && drive.rounds.length > 0
         ? drive.rounds.map((r, i) => ({ name: r.name, type: r.type || "Interview", order: r.order ?? i + 1 }))
         : [...DEFAULT_ROUNDS],
+      examCenters: Array.isArray(drive.examCenters) && drive.examCenters.length > 0
+        ? drive.examCenters.map((center, index) => ({
+            name: center.name || `Center ${index + 1}`,
+            lat: String(center.lat ?? ""),
+            lon: String(center.lon ?? ""),
+            radiusMeters: String(center.radiusMeters ?? "300"),
+            isActive: center.isActive !== false,
+            priority: Number.isFinite(Number(center.priority)) ? Number(center.priority) : index,
+          }))
+        : [createEmptyCenter(0)],
     });
     setShowCreateModal(true);
   };
@@ -315,6 +383,10 @@ export default function DriveManager() {
                 </p>
               )}
 
+              <div className="mt-2 text-xs text-gray-500">
+                Exam centers: {Array.isArray(drive.examCenters) ? drive.examCenters.length : 0}
+              </div>
+
               {/* Rounds */}
               {drive.rounds && drive.rounds.length > 0 && (
                 <div className="flex items-center gap-1.5 mt-3 flex-wrap">
@@ -423,6 +495,106 @@ export default function DriveManager() {
                   placeholder="Brief description of the drive..."
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 resize-none"
                 />
+              </div>
+
+              {/* Rounds Configuration */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Exam Centers <span className="text-red-500">*</span>
+                </label>
+
+                <div className="space-y-2">
+                  {formData.examCenters.map((center, index) => (
+                    <div
+                      key={index}
+                      className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-500">
+                          Center {index + 1}
+                        </span>
+                        {formData.examCenters.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = formData.examCenters.filter((_, i) => i !== index);
+                              setFormData({ ...formData, examCenters: updated });
+                            }}
+                            className="h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        value={center.name}
+                        onChange={(e) => {
+                          const updated = [...formData.examCenters];
+                          updated[index] = { ...updated[index], name: e.target.value };
+                          setFormData({ ...formData, examCenters: updated });
+                        }}
+                        placeholder="Center name"
+                        className="w-full h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          step="any"
+                          value={center.lat}
+                          onChange={(e) => {
+                            const updated = [...formData.examCenters];
+                            updated[index] = { ...updated[index], lat: e.target.value };
+                            setFormData({ ...formData, examCenters: updated });
+                          }}
+                          placeholder="Latitude"
+                          className="h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                        <input
+                          type="number"
+                          step="any"
+                          value={center.lon}
+                          onChange={(e) => {
+                            const updated = [...formData.examCenters];
+                            updated[index] = { ...updated[index], lon: e.target.value };
+                            setFormData({ ...formData, examCenters: updated });
+                          }}
+                          placeholder="Longitude"
+                          className="h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                        <input
+                          type="number"
+                          min="10"
+                          value={center.radiusMeters}
+                          onChange={(e) => {
+                            const updated = [...formData.examCenters];
+                            updated[index] = { ...updated[index], radiusMeters: e.target.value };
+                            setFormData({ ...formData, examCenters: updated });
+                          }}
+                          placeholder="Radius (m)"
+                          className="h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIndex = formData.examCenters.length;
+                    setFormData({
+                      ...formData,
+                      examCenters: [...formData.examCenters, createEmptyCenter(nextIndex)],
+                    });
+                  }}
+                  className="mt-2 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Exam Center
+                </button>
               </div>
 
               {/* Rounds Configuration */}

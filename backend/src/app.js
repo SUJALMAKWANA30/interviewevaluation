@@ -46,7 +46,12 @@ app.use(cors({
     : ["http://localhost:5173"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-location-access-token",
+    "x-location-token",
+  ],
 }));
 
 // Audit middleware (attaches req.audit helper)

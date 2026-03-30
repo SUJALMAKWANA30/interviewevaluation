@@ -69,6 +69,8 @@ function RedirectWithParams({ to }) {
 function ProtectedRoute({ children, requiredUserType }) {
   const authToken = localStorage.getItem("authToken");
   const userType = localStorage.getItem("userType");
+  const locationAccessToken = localStorage.getItem("locationAccessToken");
+  const locationAccessExpiry = Number(localStorage.getItem("locationAccessExpiry") || 0);
 
   if (!authToken) {
     // Redirect to appropriate login based on required user type
@@ -84,6 +86,19 @@ function ProtectedRoute({ children, requiredUserType }) {
       return <Navigate to="/hr-login" replace />;
     }
     return <Navigate to="/user-login" replace />;
+  }
+
+  if (requiredUserType === "user") {
+    const hasValidLocationAccess =
+      !!locationAccessToken &&
+      Number.isFinite(locationAccessExpiry) &&
+      locationAccessExpiry > Date.now();
+
+    if (!hasValidLocationAccess) {
+      localStorage.removeItem("locationAccessToken");
+      localStorage.removeItem("locationAccessExpiry");
+      return <Navigate to="/user-login" replace />;
+    }
   }
 
   return children;

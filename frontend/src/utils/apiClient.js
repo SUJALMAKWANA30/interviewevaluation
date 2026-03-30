@@ -15,12 +15,16 @@ class ApiClient {
 
   getHeaders(isFormData = false) {
     const token = localStorage.getItem("authToken");
+    const locationAccessToken = localStorage.getItem("locationAccessToken");
     const headers = {};
     if (!isFormData) {
       headers["Content-Type"] = "application/json";
     }
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+    }
+    if (locationAccessToken) {
+      headers["x-location-access-token"] = locationAccessToken;
     }
     return headers;
   }
@@ -101,6 +105,8 @@ class ApiClient {
     localStorage.removeItem("userData");
     localStorage.removeItem("userRole");
     localStorage.removeItem("selectedDriveId");
+    localStorage.removeItem("locationAccessToken");
+    localStorage.removeItem("locationAccessExpiry");
 
     // Redirect based on current path
     const isHRPage = window.location.pathname.startsWith("/hr") || 
@@ -212,6 +218,12 @@ export const driveAPI = {
   update: (id, data) => apiClient.put(`/drives/${id}`, data),
   toggleStatus: (id) => apiClient.patch(`/drives/${id}/toggle-status`),
   delete: (id) => apiClient.delete(`/drives/${id}`),
+};
+
+// ============ LOCATION APIs ============
+export const locationAPI = {
+  verifyDriveAccess: (lat, lon) =>
+    apiClient.post("/location/verify-drive-access", { lat, lon }),
 };
 
 // ============ EXAM APIs ============
