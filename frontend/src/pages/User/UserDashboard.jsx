@@ -14,6 +14,7 @@ const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replac
 export default function UserDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [dashboardError, setDashboardError] = useState("");
   const [examStatus, setExamStatus] = useState("not-started");
   const [totalScore, setTotalScore] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,19 +33,52 @@ export default function UserDashboard() {
     return `https://drive.google.com/thumbnail?id=${val}&sz=w200`;
   };
 
+  const getAuthHeaders = () => {
+    const authToken = localStorage.getItem("authToken");
+    const locationAccessToken = localStorage.getItem("locationAccessToken");
+
+    return {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(locationAccessToken
+        ? { "x-location-access-token": locationAccessToken }
+        : {}),
+    };
+  };
+
   useEffect(() => {
     (async () => {
       try {
+        setDashboardError("");
         const me = await candidateMeAPI.getMe();
         if (me?.success && me.data) {
           setUser(me.data);
 
-          // Extract drive rounds if drive is populated
-          const drive = me.data.driveId;
-          if (drive && typeof drive === "object" && drive.rounds?.length > 0) {
-            setDriveRounds(
-              [...drive.rounds].sort((a, b) => a.order - b.order)
-            );
+          // Extract drive rounds from populated drive, or fetch by id if not populated.
+          const driveRef = me.data.driveId;
+          let resolvedRounds = [];
+
+          if (
+            driveRef &&
+            typeof driveRef === "object" &&
+            Array.isArray(driveRef.rounds) &&
+            driveRef.rounds.length > 0
+          ) {
+            resolvedRounds = [...driveRef.rounds].sort((a, b) => a.order - b.order);
+          } else if (typeof driveRef === "string") {
+            const driveRes = await fetch(`${API_URL}/api/drives/${driveRef}`, {
+              method: "GET",
+              headers: getAuthHeaders(),
+            });
+            const driveJson = await driveRes.json().catch(() => ({}));
+            const fetchedRounds = driveJson?.data?.rounds;
+            if (Array.isArray(fetchedRounds) && fetchedRounds.length > 0) {
+              resolvedRounds = [...fetchedRounds].sort((a, b) => a.order - b.order);
+            }
+          }
+
+          if (resolvedRounds.length > 0) {
+            setDriveRounds(resolvedRounds);
           }
 
           // Photo from documents
@@ -81,8 +115,9 @@ export default function UserDashboard() {
             setQuizRoundData(qr.data);
           }
         }
-      } catch {
-        // failed to load
+      } catch (error) {
+        const message = error?.message || "Failed to load candidate dashboard.";
+        setDashboardError(message);
       } finally {
         setLoading(false);
       }
@@ -101,6 +136,8 @@ export default function UserDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userType");
+    localStorage.removeItem("locationAccessToken");
+    localStorage.removeItem("locationAccessExpiry");
     window.location.href = "/user-login";
   };
 
@@ -242,6 +279,11 @@ export default function UserDashboard() {
           <div className="space-y-10">
             {/* Profile Card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-8">
+              {dashboardError && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {dashboardError}
+                </div>
+              )}
               <div className="flex items-center gap-6">
                 {photoSrc ? (
                   <img

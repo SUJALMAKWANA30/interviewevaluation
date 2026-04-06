@@ -42,6 +42,14 @@ export const registerUserTimeDetails = async (req, res) => {
 export const getByEmail = async (req, res) => {
   try {
     const email = req.params.email?.toLowerCase();
+
+    if (req.user?.type === "candidate" && req.user.email !== email) {
+      return res.status(403).json({
+        success: false,
+        message: "Candidates can only access their own timing details.",
+      });
+    }
+
     const record = await UserTimeDetails.findOne({ email });
     if (!record) {
       return res.status(404).json({ success: false, message: "UserTimeDetails not found" });

@@ -3,7 +3,7 @@ import Drive from "../models/Drive.js";
 // Create a new drive
 export const createDrive = async (req, res) => {
   try {
-    const { name, location, description, date, rounds } = req.body;
+    const { name, location, description, date, rounds, examCenters } = req.body;
 
     if (!name || !location) {
       return res.status(400).json({
@@ -17,6 +17,7 @@ export const createDrive = async (req, res) => {
       location,
       description: description || "",
       date: date || null,
+      examCenters: Array.isArray(examCenters) ? examCenters : [],
       isActive: true,
     };
 
@@ -111,9 +112,9 @@ export const getDriveById = async (req, res) => {
 // Update a drive
 export const updateDrive = async (req, res) => {
   try {
-    const { name, location, description, date, rounds } = req.body;
+    const { name, location, description, date, rounds, examCenters } = req.body;
 
-    const updateData = { name, location, description, date };
+    const updateData = { name, location, description, date, examCenters };
 
     // If rounds are provided, validate and update them
     if (Array.isArray(rounds)) {

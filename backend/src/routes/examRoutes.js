@@ -9,12 +9,13 @@ import {
   getActiveExam,
 } from "../controllers/examController.js";
 import { authenticate, authorizePermission } from "../middlewares/auth.js";
+import { requireCandidateLocationAccess } from "../middlewares/locationAccess.js";
 import { validateExam, validateObjectId } from "../middlewares/validators.js";
 
 const router = express.Router();
 
 // Public route - get active exam (for user-side quiz)
-router.get("/active", getActiveExam);
+router.get("/active", authenticate, requireCandidateLocationAccess, getActiveExam);
 
 // Protected HR routes
 router.get("/", authenticate, getAllExams);

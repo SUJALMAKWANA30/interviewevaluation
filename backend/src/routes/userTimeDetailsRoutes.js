@@ -7,14 +7,16 @@ import {
   endExam,
   completeExam,
 } from "../controllers/userTimeDetailsController.js";
+import { authenticate } from "../middlewares/auth.js";
+import { requireCandidateLocationAccess } from "../middlewares/locationAccess.js";
 
 const router = express.Router();
 
 router.post("/register", registerUserTimeDetails);
-router.get("/", getAllUserTimeDetails);
-router.get("/email/:email", getByEmail);
-router.post("/start", startExam);
-router.post("/end", endExam);
-router.post("/complete", completeExam);
+router.get("/", authenticate, getAllUserTimeDetails);
+router.get("/email/:email", authenticate, requireCandidateLocationAccess, getByEmail);
+router.post("/start", authenticate, requireCandidateLocationAccess, startExam);
+router.post("/end", authenticate, requireCandidateLocationAccess, endExam);
+router.post("/complete", authenticate, requireCandidateLocationAccess, completeExam);
 
 export default router;

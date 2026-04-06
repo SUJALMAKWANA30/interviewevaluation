@@ -18,9 +18,11 @@ const API_BASE = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}
  */
 const getAuthHeaders = () => {
   const token = localStorage.getItem('authToken');
+  const locationAccessToken = localStorage.getItem('locationAccessToken');
   return {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...(locationAccessToken && { 'x-location-access-token': locationAccessToken }),
   };
 };
 
@@ -325,6 +327,15 @@ export const eventAPI = {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ latitude, longitude }),
+    });
+    return handleResponse(response);
+  },
+
+  verifyDriveAccess: async (lat, lon) => {
+    const response = await fetch(`${API_BASE}/location/verify-drive-access`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ lat, lon }),
     });
     return handleResponse(response);
   },

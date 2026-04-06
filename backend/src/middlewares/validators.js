@@ -88,7 +88,7 @@ export const validateHRLogin = (req, res, next) => {
  */
 export const validateDrive = (req, res, next) => {
   const errors = [];
-  const { name, location } = req.body;
+  const { name, location, examCenters } = req.body;
 
   if (!name || typeof name !== "string" || name.trim().length < 1) {
     errors.push("Drive name is required.");
@@ -97,12 +97,44 @@ export const validateDrive = (req, res, next) => {
     errors.push("Location is required.");
   }
 
+  if (!Array.isArray(examCenters) || examCenters.length < 1) {
+    errors.push("At least one exam center is required.");
+  } else {
+    examCenters.forEach((center, index) => {
+      const lat = Number(center?.lat);
+      const lon = Number(center?.lon);
+      const radiusMeters = Number(center?.radiusMeters);
+      const centerName = (center?.name || "").toString().trim();
+
+      if (!centerName) {
+        errors.push(`Exam center #${index + 1}: name is required.`);
+      }
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+        errors.push(`Exam center #${index + 1}: latitude must be between -90 and 90.`);
+      }
+      if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
+        errors.push(`Exam center #${index + 1}: longitude must be between -180 and 180.`);
+      }
+      if (!Number.isFinite(radiusMeters) || radiusMeters < 10) {
+        errors.push(`Exam center #${index + 1}: radius must be at least 10 meters.`);
+      }
+    });
+  }
+
   if (errors.length > 0) {
     return res.status(400).json({ success: false, message: "Validation failed", errors });
   }
 
   req.body.name = name.trim();
   req.body.location = location.trim();
+  req.body.examCenters = examCenters.map((center, index) => ({
+    name: (center.name || `Center ${index + 1}`).toString().trim(),
+    lat: Number(center.lat),
+    lon: Number(center.lon),
+    radiusMeters: Number(center.radiusMeters),
+    isActive: center?.isActive !== false,
+    priority: Number.isFinite(Number(center?.priority)) ? Number(center.priority) : index,
+  }));
   next();
 };
 

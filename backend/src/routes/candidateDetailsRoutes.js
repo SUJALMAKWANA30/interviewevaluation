@@ -9,6 +9,7 @@ import {
   getMe,
 } from "../controllers/candidateDetailsController.js";
 import { authenticate, optionalAuth } from "../middlewares/auth.js";
+import { requireCandidateLocationAccess } from "../middlewares/locationAccess.js";
 import { validateCandidateRegistration, validateLogin, validateObjectId } from "../middlewares/validators.js";
 
 const router = express.Router();
@@ -56,7 +57,7 @@ router.post("/register", uploadFields, validateCandidateRegistration, registerCa
 router.post("/login", validateLogin, loginCandidate);
 
 // Candidate self-service (requires candidate JWT)
-router.get("/me", authenticate, getMe);
+router.get("/me", authenticate, requireCandidateLocationAccess, getMe);
 
 // HR routes (protected — require HR JWT)
 router.get("/", authenticate, getAllCandidateDetails);

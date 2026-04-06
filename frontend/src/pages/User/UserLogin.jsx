@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { getUserLocation, getGeolocationErrorMessage } from '../../utils/geolocation';
 
 const BACKEND_API_URL = import.meta.env.VITE_API_URL || '/api';
 const API_BASE = BACKEND_API_URL.endsWith('/api')
@@ -45,6 +46,33 @@ export default function UserLogin() {
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('userType', 'user');
 
+      const location = await getUserLocation().catch((geoError) => {
+        throw new Error(getGeolocationErrorMessage(geoError));
+      });
+
+      const verifyResponse = await fetch(`${API_BASE}/location/verify-drive-access`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${data.token}`,
+        },
+        body: JSON.stringify({
+          lat: location.latitude,
+          lon: location.longitude,
+        }),
+      });
+
+      const verifyData = await verifyResponse.json().catch(() => ({}));
+      if (!verifyResponse.ok || !verifyData?.locationAccessToken) {
+        throw new Error(
+          verifyData?.message || 'Location verification failed. Please login from your drive location.'
+        );
+      }
+
+      const expiresInSeconds = Number(verifyData.expiresInSeconds || 600);
+      localStorage.setItem('locationAccessToken', verifyData.locationAccessToken);
+      localStorage.setItem('locationAccessExpiry', String(Date.now() + expiresInSeconds * 1000));
+
       toast.success('Login Successful! You may start your exam now.', {
         duration: 3000,
         position: 'top-center',
@@ -52,6 +80,10 @@ export default function UserLogin() {
 
       navigate('/user-dashboard');
     } catch (err) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userType');
+      localStorage.removeItem('locationAccessToken');
+      localStorage.removeItem('locationAccessExpiry');
       const msg = err.message || 'Login failed';
       setError(msg);
       toast.error(msg);
