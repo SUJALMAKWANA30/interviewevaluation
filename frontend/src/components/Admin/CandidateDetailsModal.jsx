@@ -65,6 +65,49 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
   // Store the email from quiz database (may be different from candidate.email)
   const [quizEmail, setQuizEmail] = useState('');
 
+  const normalizeString = (value) => String(value ?? '').trim();
+
+  const getJsonHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  const buildRoundPayload = (overrides = {}) => {
+    const r2 = {
+      rating: normalizeString(overrides.r2Rating ?? r2Rating),
+      comments: normalizeString(overrides.r2Comments ?? comments.r2),
+      interviewer: normalizeString(overrides.r2Interviewer ?? r2Interviewer),
+      status: normalizeString(overrides.r2RoundStatus ?? r2RoundStatus),
+    };
+
+    const managerialStatus = normalizeString(overrides.r3Status ?? r3Status).toUpperCase();
+    const r3 = {
+      rating: managerialStatus,
+      'Managerial status': managerialStatus,
+      comments: normalizeString(overrides.r3Comments ?? comments.r3),
+      interviewer: normalizeString(overrides.r3Interviewer ?? r3Interviewer),
+      status: normalizeString(overrides.r3RoundStatus ?? r3RoundStatus),
+    };
+
+    const r4 = {
+      rating: normalizeString(overrides.r4Rating ?? r4Rating),
+      comments: normalizeString(overrides.r4Comments ?? comments.r4),
+      interviewer: normalizeString(overrides.r4Interviewer ?? r4Interviewer),
+      status: normalizeString(overrides.r4RoundStatus ?? r4RoundStatus),
+    };
+
+    const hasData = (entry) => Object.values(entry).some((value) => normalizeString(value) !== '');
+
+    return {
+      R2: hasData(r2) ? [r2] : [],
+      R3: hasData(r3) ? [r3] : [],
+      R4: hasData(r4) ? [r4] : [],
+    };
+  };
+
   // Auto-save interviewer to database
   const autoSaveInterviewer = async (roundKey, interviewerName, newStatus) => {
     // Use quizEmail if available, otherwise fall back to candidate.email
@@ -75,27 +118,17 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
     setInterviewerSaved(prev => ({ ...prev, [roundKey]: false }));
     
     try {
+      const roundOverrides =
+        roundKey === 'r2'
+          ? { r2Interviewer: interviewerName, r2RoundStatus: newStatus }
+          : roundKey === 'r3'
+          ? { r3Interviewer: interviewerName, r3RoundStatus: newStatus }
+          : { r4Interviewer: interviewerName, r4RoundStatus: newStatus };
+
       // Build payload with current values
       const payload = {
         email: emailForUpdate,
-        R2: [{ 
-          rating: String(roundKey === 'r2' ? r2Rating : r2Rating) || '', 
-          comments: comments.r2 || '',
-          interviewer: roundKey === 'r2' ? interviewerName : r2Interviewer || '',
-          status: roundKey === 'r2' ? newStatus : r2RoundStatus || ''
-        }],
-        R3: [{ 
-          'Managerial status': roundKey === 'r3' ? r3Status : (r3Status || ''), 
-          comments: comments.r3 || '',
-          interviewer: roundKey === 'r3' ? interviewerName : r3Interviewer || '',
-          status: roundKey === 'r3' ? newStatus : r3RoundStatus || ''
-        }],
-        R4: [{ 
-          rating: String(roundKey === 'r4' ? r4Rating : r4Rating) || '', 
-          comments: comments.r4 || '',
-          interviewer: roundKey === 'r4' ? interviewerName : r4Interviewer || '',
-          status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
-        }],
+        ...buildRoundPayload(roundOverrides),
         // Dynamically include section-wise marks
         ...(candidate.quiz?.sectionWiseMarks
           ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
@@ -115,13 +148,14 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getJsonHeaders(),
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to auto-save interviewer');
+      const responseData = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(responseData?.message || responseData?.error || 'Failed to auto-save interviewer');
+      }
       
       setInterviewerSaved(prev => ({ ...prev, [roundKey]: true }));
       setTimeout(() => {
@@ -314,13 +348,14 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getJsonHeaders(),
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to update marks');
+      const responseData = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(responseData?.message || responseData?.error || 'Failed to update marks');
+      }
 
       setSaved(true);
       setIsEditing(false);
@@ -365,27 +400,17 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
     try {
       // Use quizEmail if available, otherwise fall back to candidate.email
       const emailForUpdate = quizEmail || candidate.email;
+
+      const roundOverrides =
+        roundKey === 'r2'
+          ? { r2RoundStatus: newStatus }
+          : roundKey === 'r3'
+          ? { r3RoundStatus: newStatus }
+          : { r4RoundStatus: newStatus };
       
       const payload = {
         email: emailForUpdate,
-        R2: [{ 
-          rating: String(r2Rating || ''), 
-          comments: comments.r2 || '',
-          interviewer: r2Interviewer || '',
-          status: roundKey === 'r2' ? newStatus : r2RoundStatus || ''
-        }],
-        R3: [{ 
-          'Managerial status': roundKey === 'r3' ? r3Status : (r3Status || ''), 
-          comments: comments.r3 || '',
-          interviewer: r3Interviewer || '',
-          status: roundKey === 'r3' ? newStatus : r3RoundStatus || ''
-        }],
-        R4: [{ 
-          rating: String(r4Rating || ''), 
-          comments: comments.r4 || '',
-          interviewer: r4Interviewer || '',
-          status: roundKey === 'r4' ? newStatus : r4RoundStatus || ''
-        }],
+        ...buildRoundPayload(roundOverrides),
         // Dynamically include section-wise marks from quiz result
         ...(candidate.quiz?.sectionWiseMarks
           ? candidate.quiz.sectionWiseMarks.reduce((acc, s) => {
@@ -405,15 +430,15 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/quiz-segregate/update`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getJsonHeaders(),
         body: JSON.stringify(payload),
       });
       
       const responseData = await response.json().catch(() => null);
 
-      if (!response.ok) throw new Error('Failed to save round data');
+      if (!response.ok) {
+        throw new Error(responseData?.message || responseData?.error || 'Failed to save round data');
+      }
 
       setRoundSaveStatus(prev => ({ ...prev, [roundKey]: true }));
       setTimeout(() => {
@@ -426,7 +451,7 @@ export function CandidateDetailsModal({ candidate, open, onClose, userRole = 'Ad
       }
     } catch (error) {
       console.error('Error saving round data:', error);
-      alert('Failed to save round data. Please try again.');
+      alert(error.message || 'Failed to save round data. Please try again.');
     } finally {
       setRoundSaveLoading(prev => ({ ...prev, [roundKey]: false }));
     }
