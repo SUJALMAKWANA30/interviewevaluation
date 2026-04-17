@@ -1,16 +1,25 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import Role from "../models/Role.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const DEFAULT_DEV_JWT_SECRET = "dev-only-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? null : DEFAULT_DEV_JWT_SECRET);
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET must be configured in production environment.");
+}
+
+const getBearerToken = (req) => {
+  const authHeader = req.headers.authorization || "";
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+};
 
 /**
  * Authenticate JWT token — attaches req.user with user data + populated role
  */
 export const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const token = getBearerToken(req);
 
     if (!token) {
       return res.status(401).json({
@@ -150,8 +159,7 @@ export const authorizePermission = (module, action) => {
  */
 export const optionalAuth = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const token = getBearerToken(req);
 
     if (!token) {
       req.user = null;
@@ -190,4 +198,46 @@ export const optionalAuth = async (req, res, next) => {
     req.user = null;
     next();
   }
+};
+
+/**
+ * Allow only HR/Admin users for the route.
+ */
+export const requireHRUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
+  }
+
+  if (req.user.type === "candidate") {
+    return res.status(403).json({
+      success: false,
+      message: "Candidate users cannot access this resource.",
+    });
+  }
+
+  return next();
+};
+
+/**
+ * Allow only candidate users for the route.
+ */
+export const requireCandidateUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required.",
+    });
+  }
+
+  if (req.user.type !== "candidate") {
+    return res.status(403).json({
+      success: false,
+      message: "Only candidate users can access this resource.",
+    });
+  }
+
+  return next();
 };

@@ -6,14 +6,20 @@ import {
   getQuizResultByEmail,
   updateQuizResultByEmail,
 } from "../controllers/quizResultController.js";
-import { authenticate, authorizeLevel } from "../middlewares/auth.js";
+import {
+  authenticate,
+  authorizeLevel,
+  requireHRUser,
+  requireCandidateUser,
+} from "../middlewares/auth.js";
+import { requireCandidateLocationAccess } from "../middlewares/locationAccess.js";
 
 const router = express.Router();
 
-router.post("/", createQuizResult);
-router.get("/", getAllQuizResults);
+router.post("/", authenticate, requireCandidateUser, requireCandidateLocationAccess, createQuizResult);
+router.get("/", authenticate, requireHRUser, getAllQuizResults);
 router.put("/email/:email", authenticate, authorizeLevel(4), updateQuizResultByEmail);
-router.get("/:id", getQuizResultById);
-router.get("/email/:email", getQuizResultByEmail);
+router.get("/email/:email", authenticate, requireCandidateLocationAccess, getQuizResultByEmail);
+router.get("/:id", authenticate, requireHRUser, getQuizResultById);
 
 export default router;

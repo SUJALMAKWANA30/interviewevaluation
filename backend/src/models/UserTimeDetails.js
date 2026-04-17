@@ -7,7 +7,7 @@ const userTimeDetailsSchema = new mongoose.Schema(
     firstName: { type: String },
     lastName: { type: String },
     photo: { type: String, default: "" },
-    passwordHash: { type: String, default: "" },
+    passwordHash: { type: String, default: "", select: false },
     startTime: { type: Date, default: null },
     endTime: { type: Date, default: null },
     completionTime: { type: Number, default: null },
@@ -15,5 +15,7 @@ const userTimeDetailsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userTimeDetailsSchema.index({ driveId: 1, createdAt: -1 });
 
 export default mongoose.model("UserTimeDetails", userTimeDetailsSchema);

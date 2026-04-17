@@ -62,7 +62,9 @@ const buildQuizResultUpdate = (payload = {}) => {
 
 export const createQuizResult = async (req, res) => {
   try {
-    const { email } = req.body;
+    const payloadEmail = String(req.body?.email || "").trim().toLowerCase();
+    const authEmail = String(req.user?.email || "").trim().toLowerCase();
+    const email = authEmail || payloadEmail;
 
     if (!email) {
       return res.status(400).json({
@@ -71,14 +73,21 @@ export const createQuizResult = async (req, res) => {
       });
     }
 
+    if (authEmail && payloadEmail && authEmail !== payloadEmail) {
+      return res.status(403).json({
+        success: false,
+        message: "You can submit quiz results only for your own account.",
+      });
+    }
+
     const update = buildQuizResultUpdate(req.body);
     update.examDate = new Date();
 
     const quizResult = await QuizResult.findOneAndUpdate(
-      { email: String(email).trim().toLowerCase() },
+      { email },
       {
         $set: {
-          email: String(email).trim().toLowerCase(),
+          email,
           ...update,
         },
       },
@@ -110,7 +119,7 @@ export const getAllQuizResults = async (req, res) => {
     const filter = {};
     if (driveId) filter.driveId = driveId;
 
-    const quizResults = await QuizResult.find(filter).sort({ createdAt: -1 });
+    const quizResults = await QuizResult.find(filter).sort({ createdAt: -1 }).lean();
     res.status(200).json({
       success: true,
       data: quizResults,
@@ -126,7 +135,7 @@ export const getAllQuizResults = async (req, res) => {
 
 export const getQuizResultById = async (req, res) => {
   try {
-    const quizResult = await QuizResult.findById(req.params.id);
+    const quizResult = await QuizResult.findById(req.params.id).lean();
     if (!quizResult) {
       return res.status(404).json({
         success: false,
@@ -148,7 +157,23 @@ export const getQuizResultById = async (req, res) => {
 
 export const getQuizResultByEmail = async (req, res) => {
   try {
-    const quizResult = await QuizResult.findOne({ email: req.params.email.toLowerCase() }).sort({ createdAt: -1 });
+    const email = String(req.params.email || "").trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    if (req.user?.type === "candidate" && String(req.user.email || "").trim().toLowerCase() !== email) {
+      return res.status(403).json({
+        success: false,
+        message: "You can access only your own quiz result.",
+      });
+    }
+
+    const quizResult = await QuizResult.findOne({ email }).sort({ createdAt: -1 }).lean();
     if (!quizResult) {
       return res.status(404).json({
         success: false,

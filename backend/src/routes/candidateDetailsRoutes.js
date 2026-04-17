@@ -3,14 +3,26 @@ import multer from "multer";
 import {
   registerCandidate,
   loginCandidate,
+  forgotCandidatePassword,
+  resetCandidatePassword,
   getAllCandidateDetails,
   getCandidateDetailsById,
   updateCandidateDetails,
   getMe,
 } from "../controllers/candidateDetailsController.js";
-import { authenticate, optionalAuth } from "../middlewares/auth.js";
+import { authenticate, requireHRUser } from "../middlewares/auth.js";
 import { requireCandidateLocationAccess } from "../middlewares/locationAccess.js";
-import { validateCandidateRegistration, validateLogin, validateObjectId } from "../middlewares/validators.js";
+import {
+  validateCandidateRegistration,
+  validateLogin,
+  validateObjectId,
+  validateForgotPasswordRequest,
+  validateResetPasswordRequest,
+} from "../middlewares/validators.js";
+import {
+  candidateForgotPasswordLimiter,
+  candidateResetPasswordLimiter,
+} from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
@@ -55,13 +67,25 @@ const uploadFields = upload.fields([
 // Auth routes (public)
 router.post("/register", uploadFields, validateCandidateRegistration, registerCandidate);
 router.post("/login", validateLogin, loginCandidate);
+router.post(
+  "/forgot-password",
+  candidateForgotPasswordLimiter,
+  validateForgotPasswordRequest,
+  forgotCandidatePassword
+);
+router.post(
+  "/reset-password",
+  candidateResetPasswordLimiter,
+  validateResetPasswordRequest,
+  resetCandidatePassword
+);
 
 // Candidate self-service (requires candidate JWT)
 router.get("/me", authenticate, requireCandidateLocationAccess, getMe);
 
 // HR routes (protected — require HR JWT)
-router.get("/", authenticate, getAllCandidateDetails);
-router.get("/:id", authenticate, validateObjectId("id"), getCandidateDetailsById);
-router.put("/:id", authenticate, validateObjectId("id"), updateCandidateDetails);
+router.get("/", authenticate, requireHRUser, getAllCandidateDetails);
+router.get("/:id", authenticate, requireHRUser, validateObjectId("id"), getCandidateDetailsById);
+router.put("/:id", authenticate, requireHRUser, validateObjectId("id"), updateCandidateDetails);
 
 export default router;

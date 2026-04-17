@@ -3,7 +3,13 @@ import User from "../models/User.js";
 import Role from "../models/Role.js";
 import { createAuditLog } from "../middlewares/audit.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const DEFAULT_DEV_JWT_SECRET = "dev-only-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? null : DEFAULT_DEV_JWT_SECRET);
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET must be configured in production environment.");
+}
 const JWT_EXPIRES_IN = "8h";
 const REFRESH_TOKEN_EXPIRES_IN = "7d";
 

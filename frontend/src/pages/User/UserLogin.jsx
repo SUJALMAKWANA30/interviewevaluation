@@ -149,7 +149,7 @@ export default function UserLogin() {
               Password
             </label>
             <Link
-              to="#"
+              to="/user-forgot-password"
               className="text-sm text-blue-600 hover:underline"
             >
               Forgot password?

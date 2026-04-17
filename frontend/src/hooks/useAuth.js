@@ -22,8 +22,8 @@ export const useAuth = () => {
     try {
       const endpoint =
         userType === 'hr'
-          ? `${BACKEND_API_URL}/auth/login-hr`
-          : `${BACKEND_API_URL}/auth/login-user`;
+          ? `${BACKEND_API_URL}/auth/login`
+          : `${BACKEND_API_URL}/candidate-details/login`;
 
       const response = await fetch(endpoint, {
         method: 'POST',

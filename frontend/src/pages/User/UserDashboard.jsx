@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, ChevronRight, Clock, XCircle } from "lucide-react";
 import {
@@ -141,27 +141,8 @@ export default function UserDashboard() {
     window.location.href = "/user-login";
   };
 
-  // Build stepper steps from drive rounds
-  const buildSteps = () => {
-    const steps = [{ id: "applied", label: "Applied", type: "milestone" }];
-
-    if (driveRounds.length > 0) {
-      driveRounds.forEach((r) => {
-        steps.push({ id: r.name, label: r.name, type: r.type });
-      });
-    } else {
-      // Fallback: default rounds
-      steps.push({ id: "R1", label: "R1", type: "Exam" });
-      steps.push({ id: "R2", label: "R2", type: "Interview" });
-      steps.push({ id: "R3", label: "R3", type: "Interview" });
-      steps.push({ id: "R4", label: "R4", type: "Interview" });
-    }
-
-    return steps;
-  };
-
   // Determine round status from quiz result data stored in this backend
-  const getRoundStatus = (roundId) => {
+  const getRoundStatus = useCallback((roundId) => {
     if (roundId === "applied") return "completed";
 
     // R1 / Exam round
@@ -186,12 +167,26 @@ export default function UserDashboard() {
     }
 
     return "not-started";
-  };
+  }, [examStatus, quizRoundData, totalScore]);
 
-  const steps = buildSteps();
+  const steps = useMemo(() => {
+    const items = [{ id: "applied", label: "Applied", type: "milestone" }];
 
-  // Calculate current round index
-  const getCurrentRoundIndex = () => {
+    if (driveRounds.length > 0) {
+      driveRounds.forEach((r) => {
+        items.push({ id: r.name, label: r.name, type: r.type });
+      });
+      return items;
+    }
+
+    items.push({ id: "R1", label: "R1", type: "Exam" });
+    items.push({ id: "R2", label: "R2", type: "Interview" });
+    items.push({ id: "R3", label: "R3", type: "Interview" });
+    items.push({ id: "R4", label: "R4", type: "Interview" });
+    return items;
+  }, [driveRounds]);
+
+  const currentRoundIndex = useMemo(() => {
     let lastCompleted = -1;
     for (let i = 0; i < steps.length; i++) {
       const status = getRoundStatus(steps[i].id);
@@ -199,9 +194,9 @@ export default function UserDashboard() {
       if (status === "in-progress") return i;
     }
     return Math.min(lastCompleted + 1, steps.length - 1);
-  };
+  }, [steps, getRoundStatus]);
 
-  const currentRoundIndex = getCurrentRoundIndex();
+  const photoSrc = useMemo(() => getPhotoSrc(userPhoto), [userPhoto]);
 
   const getRoundDisplayName = (step) => {
     if (!step) return "—";
@@ -255,8 +250,6 @@ export default function UserDashboard() {
       </div>
     );
   }
-
-  const photoSrc = getPhotoSrc(userPhoto);
 
   return (
     <div className="min-h-screen bg-slate-100 text-left">

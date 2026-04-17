@@ -8,6 +8,8 @@ import UserLogin from './pages/User/UserLogin';
 import UserRegistration from './pages/User/UserRegistration';
 import UserDashboard from './pages/User/UserDashboard';
 import QuizForm from './pages/User/QuizForm';
+import ForgotPassword from './pages/User/ForgotPassword';
+import ResetPassword from './pages/User/ResetPassword';
 
 // HR Pages
 import HRLogin from "./pages/Admin/HRLogin";
@@ -109,6 +111,8 @@ function App() {
         /> */}
         <Route path="/user-login" element={<UserLogin />} />
         <Route path="/user-register" element={<UserRegistration />} />
+        <Route path="/user-forgot-password" element={<ForgotPassword />} />
+        <Route path="/user-reset-password" element={<ResetPassword />} />
         {/* Protected User Routes */}
         <Route
           path="/user-dashboard"

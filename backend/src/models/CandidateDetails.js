@@ -40,6 +40,8 @@ const candidateDetailsSchema = new mongoose.Schema(
     // Authentication
     password: { type: String, required: true },
     uniqueId: { type: String, unique: true },
+    resetPasswordToken: { type: String, default: null, select: false },
+    resetPasswordExpires: { type: Date, default: null, select: false },
 
     // Status
     registrationStatus: {
@@ -109,5 +111,9 @@ candidateDetailsSchema.pre("save", async function () {
 candidateDetailsSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+candidateDetailsSchema.index({ driveId: 1, createdAt: -1 });
+candidateDetailsSchema.index({ examStatus: 1, createdAt: -1 });
+candidateDetailsSchema.index({ resetPasswordToken: 1, resetPasswordExpires: 1 });
 
 export default mongoose.model("CandidateDetails", candidateDetailsSchema);

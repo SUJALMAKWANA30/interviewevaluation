@@ -51,7 +51,7 @@ export const createDrive = async (req, res) => {
 // Get all drives
 export const getAllDrives = async (req, res) => {
   try {
-    const drives = await Drive.find().sort({ createdAt: -1 });
+    const drives = await Drive.find().sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -69,7 +69,7 @@ export const getAllDrives = async (req, res) => {
 // Get only active drives (for candidate registration dropdown)
 export const getActiveDrives = async (req, res) => {
   try {
-    const drives = await Drive.find({ isActive: true }).sort({ createdAt: -1 });
+    const drives = await Drive.find({ isActive: true }).sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -87,7 +87,7 @@ export const getActiveDrives = async (req, res) => {
 // Get a single drive by ID
 export const getDriveById = async (req, res) => {
   try {
-    const drive = await Drive.findById(req.params.id);
+    const drive = await Drive.findById(req.params.id).lean();
 
     if (!drive) {
       return res.status(404).json({

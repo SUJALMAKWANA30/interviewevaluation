@@ -46,7 +46,7 @@ export const getAllExams = async (req, res) => {
       filter.driveId = driveId;
     }
 
-    const exams = await Exam.find(filter).sort({ createdAt: -1 });
+    const exams = await Exam.find(filter).sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -64,7 +64,7 @@ export const getAllExams = async (req, res) => {
 // Get a single exam by ID
 export const getExamById = async (req, res) => {
   try {
-    const exam = await Exam.findById(req.params.id);
+    const exam = await Exam.findById(req.params.id).lean();
 
     if (!exam) {
       return res.status(404).json({
@@ -191,7 +191,7 @@ export const toggleActiveExam = async (req, res) => {
 // Get the currently active exam (for user-side)
 export const getActiveExam = async (req, res) => {
   try {
-    const exam = await Exam.findOne({ isActive: true });
+    const exam = await Exam.findOne({ isActive: true }).lean();
 
     if (!exam) {
       return res.status(404).json({

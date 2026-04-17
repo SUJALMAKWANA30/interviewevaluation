@@ -16,7 +16,7 @@ import {
   getPerformanceMessage,
   getPerformanceColor,
 } from "../../utils/quizUtils";
-import { quizResultAPI, userTimeDetailsAPI, candidateMeAPI, eventAPI, examAPI } from "../../utils/api";
+import { quizResultAPI, userTimeDetailsAPI, candidateMeAPI, examAPI } from "../../utils/api";
 
 const MAX_TAB_VIOLATIONS = 3;
 
@@ -28,6 +28,7 @@ export default function QuizForm() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [resultMessage, setResultMessage] = useState("");
   const [quizSections, setQuizSections] = useState([]);
+  const [examDurationSeconds, setExamDurationSeconds] = useState(30 * 60);
   const [examLoading, setExamLoading] = useState(true);
   const timeoutTriggeredRef = useRef(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -107,6 +108,10 @@ export default function QuizForm() {
         const res = await examAPI.getActiveExam();
         if (res.success && res.data) {
           const exam = res.data;
+          const durationMinutes = Number(exam.duration);
+          if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+            setExamDurationSeconds(Math.max(60, Math.floor(durationMinutes * 60)));
+          }
           // Transform DB sections to match the format expected by the quiz
           const sections = (exam.sections || []).map((section, sIdx) => ({
             id: section._id || sIdx + 1,
@@ -193,33 +198,64 @@ export default function QuizForm() {
     autoRedirectTimerRef.current = setTimeout(() => {
       navigate("/user-dashboard");
     }, wasTimeout ? 5000 : 10000);
-  }, [answers, navigate]);
+  }, [answers, navigate, quizSections]);
 
   useEffect(() => {
+    if (examLoading) {
+      return;
+    }
+
     let intervalId;
+    let cancelled = false;
+
     const init = async () => {
       try {
         const me = await candidateMeAPI.getMe();
-        if (!me?.success || !me.data?.email) return;
-        const settings = await eventAPI.getLocationSettings().catch(() => ({ examDuration: 30 }));
-        const totalSeconds = Math.max(60, (settings.examDuration || 30) * 60);
+        if (!me?.success || !me.data?.email || cancelled) return;
+
+        const totalSeconds = Math.max(60, examDurationSeconds);
         const timeDetailsResp = await userTimeDetailsAPI.getByEmail(me.data.email).catch(() => null);
+        if (cancelled) return;
+
         const record = timeDetailsResp?.data || null;
         let startMs = record?.startTime ? new Date(record.startTime).getTime() : null;
         const hasCompleted = !!(record?.completionTime || record?.endTime);
         const isExpired = startMs ? ((Date.now() - startMs) / 1000) >= totalSeconds : false;
-        if (!startMs || hasCompleted || isExpired) {
-          await userTimeDetailsAPI.start().catch(() => { });
-          startMs = Date.now();
+
+        if (hasCompleted) {
+          toast.error("Your exam attempt is already completed.");
+          navigate("/user-dashboard");
+          return;
         }
+
+        if (!startMs) {
+          const startResp = await userTimeDetailsAPI.start().catch(() => null);
+          const apiStartTime = startResp?.data?.startTime
+            ? new Date(startResp.data.startTime).getTime()
+            : Date.now();
+          startMs = apiStartTime;
+        }
+
+        if (isExpired) {
+          timeoutTriggeredRef.current = true;
+          setTimeLeft(0);
+          if (finishQuizRef.current) {
+            finishQuizRef.current();
+          }
+          return;
+        }
+
         const tick = () => {
           const elapsed = Math.floor((Date.now() - startMs) / 1000);
           const remaining = totalSeconds - elapsed;
           if (remaining <= 0) {
             timeoutTriggeredRef.current = true;
             setTimeLeft(0);
-            if (finishQuizRef.current) { 
-              finishQuizRef.current(); 
+            if (intervalId) {
+              clearInterval(intervalId);
+            }
+            if (finishQuizRef.current) {
+              finishQuizRef.current();
             }
             return;
           }
@@ -231,9 +267,10 @@ export default function QuizForm() {
     };
     init();
     return () => {
+      cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, []);
+  }, [examDurationSeconds, examLoading, navigate]);
 
   useEffect(() => {
     return () => {

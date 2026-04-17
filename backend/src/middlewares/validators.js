@@ -62,6 +62,64 @@ export const validateLogin = (req, res, next) => {
 };
 
 /**
+ * Validate forgot password request
+ */
+export const validateForgotPasswordRequest = (req, res, next) => {
+  const errors = [];
+  const { email } = req.body;
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.push("Valid email is required.");
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ success: false, message: "Validation failed", errors });
+  }
+
+  req.body.email = email.trim().toLowerCase();
+  next();
+};
+
+/**
+ * Validate reset password request
+ */
+export const validateResetPasswordRequest = (req, res, next) => {
+  const errors = [];
+  const { token, newPassword, confirmPassword } = req.body;
+
+  if (!token || typeof token !== "string" || token.trim().length < 10) {
+    errors.push("Valid reset token is required.");
+  }
+
+  if (!newPassword || typeof newPassword !== "string") {
+    errors.push("New password is required.");
+  } else {
+    const hasMinLength = newPassword.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    const hasLowerCase = /[a-z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecial) {
+      errors.push(
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
+      );
+    }
+  }
+
+  if (confirmPassword !== newPassword) {
+    errors.push("Confirm password must match new password.");
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ success: false, message: "Validation failed", errors });
+  }
+
+  req.body.token = token.trim();
+  next();
+};
+
+/**
  * Validate HR login input
  */
 export const validateHRLogin = (req, res, next) => {

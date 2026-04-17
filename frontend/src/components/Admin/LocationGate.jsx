@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Zap, MapPin, Check, X, Loader2 } from "lucide-react";
+import { MapPin, X, Loader2, AlertTriangle } from "lucide-react";
 import {
   getUserLocation,
   isWithinRadius,
@@ -21,7 +21,7 @@ const getTokenFromURL = () => {
 const fetchLocationFromToken = async (token) => {
   try {
     const response = await fetch(
-      `${LOCATION_API_BASE}/location/validate?token=${token}`,
+      `${LOCATION_API_BASE}/location/validate?token=${encodeURIComponent(token)}`,
     );
     const data = await response.json();
 

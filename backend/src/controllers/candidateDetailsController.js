@@ -2,8 +2,21 @@ import CandidateDetails from "../models/CandidateDetails.js";
 import { uploadFileToDrive } from "../services/googleDriveService.js";
 import jwt from "jsonwebtoken";
 import UserTimeDetails from "../models/UserTimeDetails.js";
+import crypto from "crypto";
+import { sendCandidatePasswordResetEmail } from "../services/notificationService.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const DEFAULT_DEV_JWT_SECRET = "dev-only-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? null : DEFAULT_DEV_JWT_SECRET);
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET must be configured in production environment.");
+}
+
+const PASSWORD_RESET_TTL_MINUTES = Number(process.env.CANDIDATE_RESET_TTL_MINUTES || 15);
+
+const hashResetToken = (token) =>
+  crypto.createHash("sha256").update(String(token)).digest("hex");
 
 /* ===============================
    REGISTER CANDIDATE
@@ -205,7 +218,6 @@ export const registerCandidate = async (req, res) => {
           firstName: candidate.firstName,
           lastName: candidate.lastName,
           photo: (candidate?.documents?.photo || "").toString(),
-          passwordHash: candidate.password,
           driveId: driveId || null,
         });
       }
@@ -312,7 +324,8 @@ export const getAllCandidateDetails = async (req, res) => {
 
     const candidates = await CandidateDetails.find(filter)
       .select("-password")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -333,7 +346,7 @@ export const getAllCandidateDetails = async (req, res) => {
 ================================ */
 export const getCandidateDetailsById = async (req, res) => {
   try {
-    const candidate = await CandidateDetails.findById(req.params.id).select("-password");
+    const candidate = await CandidateDetails.findById(req.params.id).select("-password").lean();
 
     if (!candidate) {
       return res.status(404).json({
@@ -360,15 +373,14 @@ export const getCandidateDetailsById = async (req, res) => {
 ================================ */
 export const getMe = async (req, res) => {
   try {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!req.user || req.user.type !== "candidate") {
+      return res.status(403).json({ success: false, message: "Only candidate users can access this resource." });
     }
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const candidate = await CandidateDetails.findById(decoded.id)
+
+    const candidate = await CandidateDetails.findById(req.user.id)
       .select("-password")
-      .populate("driveId");
+      .populate("driveId")
+      .lean();
     if (!candidate) {
       return res.status(404).json({ success: false, message: "Candidate not found" });
     }
@@ -415,6 +427,85 @@ export const updateCandidateDetails = async (req, res) => {
       success: false,
       message: "Error updating candidate",
       error: error.message,
+    });
+  }
+};
+
+/* ===============================
+   FORGOT CANDIDATE PASSWORD
+================================ */
+export const forgotCandidatePassword = async (req, res) => {
+  const genericResponse = {
+    success: true,
+    message:
+      "If an account exists for this email, a password reset link has been sent.",
+  };
+
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const candidate = await CandidateDetails.findOne({ email });
+    if (!candidate || !candidate.isActive) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = hashResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
+
+    candidate.resetPasswordToken = hashedToken;
+    candidate.resetPasswordExpires = expiresAt;
+    await candidate.save({ validateBeforeSave: false });
+
+    const emailResult = await sendCandidatePasswordResetEmail(candidate, rawToken);
+    if (!emailResult?.success) {
+      console.error("[ForgotPassword] Failed to send reset email:", emailResult?.error || "unknown error");
+    }
+
+    return res.status(200).json(genericResponse);
+  } catch (error) {
+    console.error("[ForgotPassword] Request failed:", error.message);
+    return res.status(200).json(genericResponse);
+  }
+};
+
+/* ===============================
+   RESET CANDIDATE PASSWORD
+================================ */
+export const resetCandidatePassword = async (req, res) => {
+  try {
+    const token = String(req.body?.token || "").trim();
+    const newPassword = String(req.body?.newPassword || "");
+
+    const hashedToken = hashResetToken(token);
+    const candidate = await CandidateDetails.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() },
+    }).select("+resetPasswordToken +resetPasswordExpires");
+
+    if (!candidate || !candidate.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired password reset token.",
+      });
+    }
+
+    candidate.password = newPassword;
+    candidate.resetPasswordToken = null;
+    candidate.resetPasswordExpires = null;
+    await candidate.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful. You can now login with your new password.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to reset password.",
     });
   }
 };

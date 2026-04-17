@@ -215,6 +215,56 @@ export async function sendUserCredentials(user, plainPassword, roleName) {
 }
 
 /**
+ * Send candidate password reset email
+ */
+export async function sendCandidatePasswordResetEmail(candidate, resetToken) {
+  const configuredFrontend = process.env.FRONTEND_URL || "http://localhost:5173";
+  let frontendBaseUrl = configuredFrontend;
+
+  try {
+    const parsed = new URL(configuredFrontend);
+    if (parsed.hostname !== "localhost" && parsed.protocol !== "https:") {
+      parsed.protocol = "https:";
+      frontendBaseUrl = parsed.toString().replace(/\/$/, "");
+    } else {
+      frontendBaseUrl = configuredFrontend.replace(/\/$/, "");
+    }
+  } catch {
+    frontendBaseUrl = configuredFrontend.replace(/\/$/, "");
+  }
+
+  const resetUrl = `${frontendBaseUrl}/user-reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  const html = `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #1d4ed8; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin: 0;">Reset Your Candidate Password</h2>
+        <p style="margin: 5px 0 0; opacity: 0.9;">Tecnoprism Walking Interview Portal</p>
+      </div>
+      <div style="background: #ffffff; border: 1px solid #e5e7eb; border-top: 0; padding: 24px; border-radius: 0 0 8px 8px;">
+        <p>Hello <strong>${candidate.firstName || "Candidate"}</strong>,</p>
+        <p>We received a request to reset your password.</p>
+        <p style="margin: 16px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background: #1d4ed8; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            Reset Password
+          </a>
+        </p>
+        <p style="color: #6b7280; font-size: 14px;">
+          This link expires in 15 minutes. If you did not request this change, you can ignore this email.
+        </p>
+        <p style="margin-top: 24px;">Best regards,<br/><strong>Tecnoprism Support Team</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(
+    candidate.email,
+    "Reset your Tecnoprism candidate password",
+    html
+  );
+}
+
+/**
  * Core email sending function with retry and Outlook-friendly headers
  */
 async function sendEmail(to, subject, html) {

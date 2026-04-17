@@ -1,8 +1,5 @@
-import jwt from "jsonwebtoken";
 import UserTimeDetails from "../models/UserTimeDetails.js";
 import CandidateDetails from "../models/CandidateDetails.js";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 export const getAllUserTimeDetails = async (req, res) => {
   try {
@@ -10,7 +7,7 @@ export const getAllUserTimeDetails = async (req, res) => {
     const filter = {};
     if (driveId) filter.driveId = driveId;
 
-    const records = await UserTimeDetails.find(filter).sort({ createdAt: -1 });
+    const records = await UserTimeDetails.find(filter).sort({ createdAt: -1 }).lean();
     res.status(200).json({ success: true, data: records });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to fetch all user time details", error: error.message });
@@ -50,7 +47,7 @@ export const getByEmail = async (req, res) => {
       });
     }
 
-    const record = await UserTimeDetails.findOne({ email });
+    const record = await UserTimeDetails.findOne({ email }).lean();
     if (!record) {
       return res.status(404).json({ success: false, message: "UserTimeDetails not found" });
     }
@@ -62,25 +59,42 @@ export const getByEmail = async (req, res) => {
 
 export const startExam = async (req, res) => {
   try {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const candidate = await CandidateDetails.findById(decoded.id);
+    const candidate = await CandidateDetails.findById(req.user.id);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
+
+    const email = candidate.email.toLowerCase();
+    const existing = await UserTimeDetails.findOne({ email });
+
+    if (existing?.completionTime != null || existing?.endTime) {
+      return res.status(409).json({
+        success: false,
+        message: "Exam is already completed for this candidate.",
+        data: existing,
+      });
+    }
+
+    if (existing?.startTime) {
+      return res.status(200).json({
+        success: true,
+        alreadyStarted: true,
+        data: existing,
+      });
+    }
+
     const now = new Date();
     const photo = (candidate?.documents?.photo || "").toString();
     const record = await UserTimeDetails.findOneAndUpdate(
-      { email: candidate.email.toLowerCase() },
+      { email },
       {
-        email: candidate.email.toLowerCase(),
-        phone: candidate.phone,
-        firstName: candidate.firstName,
-        lastName: candidate.lastName,
-        passwordHash: candidate.password,
-        photo,
-        startTime: now,
-        driveId: candidate.driveId || null,
+        $set: {
+          email,
+          phone: candidate.phone,
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          photo,
+          startTime: now,
+          driveId: candidate.driveId || null,
+        },
       },
       { upsert: true, new: true }
     );
@@ -92,11 +106,7 @@ export const startExam = async (req, res) => {
 
 export const endExam = async (req, res) => {
   try {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const candidate = await CandidateDetails.findById(decoded.id);
+    const candidate = await CandidateDetails.findById(req.user.id);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
     const now = new Date();
     const email = candidate.email.toLowerCase();
@@ -104,12 +114,13 @@ export const endExam = async (req, res) => {
     const record = await UserTimeDetails.findOneAndUpdate(
       { email },
       {
-        $set: { endTime: now, passwordHash: candidate.password, photo, driveId: candidate.driveId || null },
+        $set: { endTime: now, photo, driveId: candidate.driveId || null },
         $setOnInsert: {
           email,
           phone: candidate.phone,
           firstName: candidate.firstName,
           lastName: candidate.lastName,
+          startTime: now,
         },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -122,11 +133,7 @@ export const endExam = async (req, res) => {
 
 export const completeExam = async (req, res) => {
   try {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const candidate = await CandidateDetails.findById(decoded.id);
+    const candidate = await CandidateDetails.findById(req.user.id);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
     const now = new Date();
     const email = candidate.email.toLowerCase();
@@ -143,7 +150,6 @@ export const completeExam = async (req, res) => {
             phone: candidate.phone,
             firstName: candidate.firstName,
             lastName: candidate.lastName,
-            passwordHash: candidate.password,
           },
         },
         { upsert: true, setDefaultsOnInsert: true }
@@ -157,7 +163,7 @@ export const completeExam = async (req, res) => {
     const record = await UserTimeDetails.findOneAndUpdate(
       { email },
       {
-        $set: { completionTime: completionSeconds, passwordHash: candidate.password, photo, driveId: candidate.driveId || null },
+        $set: { completionTime: completionSeconds, photo, driveId: candidate.driveId || null },
         $setOnInsert: {
           email,
           phone: candidate.phone,

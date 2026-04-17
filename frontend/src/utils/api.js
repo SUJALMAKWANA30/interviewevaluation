@@ -32,7 +32,7 @@ const getAuthHeaders = () => {
  * @returns {Promise} Promise resolving to response data
  */
 const handleResponse = async (response) => {
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(data.message || 'API request failed');
@@ -69,6 +69,30 @@ export const authAPI = {
   },
 
   /**
+   * Request candidate password reset link
+   */
+  forgotUserPassword: async (email) => {
+    const response = await fetch(`${API_BASE}/candidate-details/forgot-password`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Reset candidate password using token
+   */
+  resetUserPassword: async (token, newPassword, confirmPassword) => {
+    const response = await fetch(`${API_BASE}/candidate-details/reset-password`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ token, newPassword, confirmPassword }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Register HR
    */
   registerHR: async (hrData) => {
@@ -84,23 +108,7 @@ export const authAPI = {
    * Login HR
    */
   loginHR: async (email, password) => {
-    // Development shortcut: accept known hard-coded dev credentials
-    if (email === 'hr@example.com' && password === 'password123') {
-      return {
-        success: true,
-        message: 'HR Login successful (dev fallback)',
-        token: 'token-dev-hr',
-        user: {
-          id: 'dev-hr',
-          email: 'hr@example.com',
-          firstName: 'Dev',
-          lastName: 'HR',
-          userType: 'hr',
-        },
-      };
-    }
-
-    const response = await fetch(`${API_BASE}/candidate-details/login`, {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, password }),

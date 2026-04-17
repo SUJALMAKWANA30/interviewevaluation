@@ -76,4 +76,33 @@ app.use("/api/drives", driveRoutes);
 // ============ SCHEDULE ROUTES (protected) ============
 app.use("/api/schedules", scheduleRoutes);
 
+// ============ FALLBACKS & ERROR HANDLING ============
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found.",
+  });
+});
+
+app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      message: "Payload too large.",
+    });
+  }
+
+  const status = Number(err?.statusCode || err?.status) || 500;
+  const message = status >= 500 ? "Internal server error." : err?.message || "Request failed.";
+
+  if (status >= 500) {
+    console.error("[API Error]", err);
+  }
+
+  return res.status(status).json({
+    success: false,
+    message,
+  });
+});
+
 export default app;

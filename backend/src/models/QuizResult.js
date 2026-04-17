@@ -21,7 +21,7 @@ const roundReviewSchema = new mongoose.Schema(
 
 const quizResultSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
     mobileNumber: { type: String },
     name: { type: String },
     sectionWiseMarks: [
@@ -41,5 +41,8 @@ const quizResultSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+quizResultSchema.index({ email: 1 });
+quizResultSchema.index({ driveId: 1, createdAt: -1 });
 
 export default mongoose.model("QuizResult", quizResultSchema);

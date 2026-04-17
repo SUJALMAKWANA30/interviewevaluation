@@ -1,7 +1,13 @@
 import jwt from "jsonwebtoken";
 import CandidateDetails from "../models/CandidateDetails.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const DEFAULT_DEV_JWT_SECRET = "dev-only-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? null : DEFAULT_DEV_JWT_SECRET);
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET must be configured in production environment.");
+}
 const LOCATION_ACCESS_SECRET = process.env.LOCATION_ACCESS_SECRET || JWT_SECRET;
 
 export const requireCandidateLocationAccess = async (req, res, next) => {
