@@ -30,4 +30,3 @@ backend/config/google-drive-key.json
 !package.json
 !package-lock.json
 !package-lock.json
-config.bat
